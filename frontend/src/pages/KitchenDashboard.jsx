@@ -236,23 +236,23 @@ const KitchenDashboard = () => {
               <div className="text-8xl animate-ping">🔔</div>
               <h2 className="text-5xl font-bold text-white">YENİ SİPARİŞ!</h2>
               <div className="bg-white/20 backdrop-blur-sm p-6 rounded-2xl">
-                <p className=\"text-4xl font-bold text-white mb-4\">MASA {newOrderAlert.table_number}</p>
-                <div className=\"space-y-2 text-white text-xl\">
+                <p className="text-4xl font-bold text-white mb-4">MASA {newOrderAlert.table_number}</p>
+                <div className="space-y-2 text-white text-xl">
                   {newOrderAlert.items.map((item, idx) => (
-                    <div key={idx} className=\"flex justify-between\">
+                    <div key={idx} className="flex justify-between">
                       <span>{item.quantity}x {item.name}</span>
-                      <span className=\"font-semibold\">{(item.price * item.quantity).toFixed(2)} ₺</span>
+                      <span className="font-semibold">{(item.price * item.quantity).toFixed(2)} ₺</span>
                     </div>
                   ))}
                 </div>
-                <div className=\"mt-4 pt-4 border-t-2 border-white/50\">
-                  <p className=\"text-3xl font-bold text-white\">Toplam: {newOrderAlert.total_amount.toFixed(2)} ₺</p>
+                <div className="mt-4 pt-4 border-t-2 border-white/50">
+                  <p className="text-3xl font-bold text-white">Toplam: {newOrderAlert.total_amount.toFixed(2)} ₺</p>
                 </div>
               </div>
               <Button
                 onClick={() => handleAcceptOrder(newOrderAlert.id)}
-                className=\"w-full h-20 text-3xl font-bold bg-green-500 hover:bg-green-600 text-white rounded-full shadow-lg\"
-                data-testid=\"accept-order-button\"
+                className="w-full h-20 text-3xl font-bold bg-green-500 hover:bg-green-600 text-white rounded-full shadow-lg"
+                data-testid="accept-order-button"
               >
                 ✓ KABUL ET VE HAZIRLA
               </Button>
