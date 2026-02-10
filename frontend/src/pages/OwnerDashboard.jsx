@@ -54,6 +54,13 @@ const OwnerDashboard = () => {
     try {
       const token = localStorage.getItem('token');
       
+      if (activeTab === 'overview') {
+        const statsRes = await axios.get(`${API}/owner/stats`, {
+          headers: { Authorization: `Bearer ${token}` }
+        });
+        setStats(statsRes.data);
+      }
+      
       if (activeTab === 'menu') {
         const [categoriesRes, itemsRes] = await Promise.all([
           axios.get(`${API}/owner/menu/categories`, { headers: { Authorization: `Bearer ${token}` } }),
