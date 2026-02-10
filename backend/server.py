@@ -608,7 +608,8 @@ async def create_menu_item(data: MenuItemCreate, current_user: User = Depends(ge
         description=data.description,
         price=data.price,
         image_url=data.image_url,
-        available=data.available
+        available=data.available,
+        preparation_time_minutes=data.preparation_time_minutes
     )
     
     doc = item.model_dump()
