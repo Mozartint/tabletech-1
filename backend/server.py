@@ -127,6 +127,7 @@ class OrderItem(BaseModel):
     name: str
     price: float
     quantity: int
+    preparation_time_minutes: int = 10
 
 class Order(BaseModel):
     model_config = ConfigDict(extra="ignore")
@@ -138,6 +139,7 @@ class Order(BaseModel):
     total_amount: float
     payment_method: str
     status: str = "pending"
+    estimated_completion_minutes: int = 15
     created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
     updated_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
 
@@ -151,6 +153,33 @@ class OrderStatusUpdate(BaseModel):
 
 class OrderPaymentUpdate(BaseModel):
     payment_status: str
+
+class Review(BaseModel):
+    model_config = ConfigDict(extra="ignore")
+    id: str = Field(default_factory=lambda: str(uuid.uuid4()))
+    restaurant_id: str
+    order_id: Optional[str] = None
+    rating: int
+    comment: str
+    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+
+class ReviewCreate(BaseModel):
+    restaurant_id: str
+    order_id: Optional[str] = None
+    rating: int
+    comment: str
+
+class WaiterCall(BaseModel):
+    model_config = ConfigDict(extra="ignore")
+    id: str = Field(default_factory=lambda: str(uuid.uuid4()))
+    restaurant_id: str
+    table_id: str
+    table_number: str
+    status: str = "pending"
+    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+
+class WaiterCallCreate(BaseModel):
+    table_id: str
 
 def hash_password(password: str) -> str:
     return pwd_context.hash(password)
