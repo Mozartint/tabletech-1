@@ -196,7 +196,7 @@ const AdminDashboard = () => {
           </TabsList>
 
           <TabsContent value="overview">
-            {stats && (
+            {stats && analytics && (
               <div className="space-y-6">
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
                   <Card className="shadow-sm hover:shadow-md transition-shadow border-l-4 border-l-orange-500">
@@ -252,31 +252,73 @@ const AdminDashboard = () => {
                   </Card>
                 </div>
 
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                  <Card className="shadow-sm">
+                    <CardHeader>
+                      <CardTitle className="flex items-center gap-2">
+                        <BarChart3 className="w-5 h-5 text-orange-500" />
+                        Son 7 Gün Sipariş Trendi
+                      </CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      <ResponsiveContainer width="100%" height={300}>
+                        <LineChart data={analytics.daily_orders}>
+                          <CartesianGrid strokeDasharray="3 3" />
+                          <XAxis dataKey="date" />
+                          <YAxis />
+                          <Tooltip />
+                          <Legend />
+                          <Line type="monotone" dataKey="orders" stroke="#f97316" strokeWidth={2} name="Sipariş" />
+                          <Line type="monotone" dataKey="revenue" stroke="#22c55e" strokeWidth={2} name="Gelir (₺)" />
+                        </LineChart>
+                      </ResponsiveContainer>
+                    </CardContent>
+                  </Card>
+
+                  <Card className="shadow-sm">
+                    <CardHeader>
+                      <CardTitle className="flex items-center gap-2">
+                        <Store className="w-5 h-5 text-orange-500" />
+                        En Popüler Restoranlar
+                      </CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      <ResponsiveContainer width="100%" height={300}>
+                        <BarChart data={analytics.restaurant_stats.slice(0, 5)}>
+                          <CartesianGrid strokeDasharray="3 3" />
+                          <XAxis dataKey="name" angle={-45} textAnchor="end" height={80} />
+                          <YAxis />
+                          <Tooltip />
+                          <Legend />
+                          <Bar dataKey="orders" fill="#f97316" name="Sipariş" />
+                        </BarChart>
+                      </ResponsiveContainer>
+                    </CardContent>
+                  </Card>
+                </div>
+
                 <Card className="shadow-sm">
                   <CardHeader>
-                    <CardTitle>Son Restoranlar</CardTitle>
-                    <CardDescription>En son eklenen restoranlar</CardDescription>
+                    <CardTitle>Restoran Performansı</CardTitle>
+                    <CardDescription>Toplam sipariş ve gelire göre sıralanmış</CardDescription>
                   </CardHeader>
                   <CardContent>
                     <div className="space-y-3">
-                      {restaurants.slice(0, 5).map((restaurant) => (
-                        <div key={restaurant.id} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+                      {analytics.restaurant_stats.slice(0, 10).map((restaurant, idx) => (
+                        <div key={idx} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
                           <div className="flex items-center gap-3">
-                            <div className="w-10 h-10 bg-orange-100 rounded-lg flex items-center justify-center">
-                              <Store className="w-5 h-5 text-orange-600" />
+                            <div className="w-8 h-8 bg-orange-500 text-white rounded-full flex items-center justify-center font-bold text-sm">
+                              {idx + 1}
                             </div>
                             <div>
                               <p className="font-medium text-gray-900">{restaurant.name}</p>
-                              <p className="text-sm text-gray-500">{restaurant.address}</p>
+                              <p className="text-sm text-gray-500">{restaurant.orders} sipariş</p>
                             </div>
                           </div>
-                          <span className={`px-2.5 py-0.5 rounded-full text-xs font-medium ${
-                            restaurant.subscription_status === 'active' 
-                              ? 'bg-green-100 text-green-800' 
-                              : 'bg-red-100 text-red-800'
-                          }`}>
-                            {restaurant.subscription_status === 'active' ? 'Aktif' : 'Pasif'}
-                          </span>
+                          <div className="text-right">
+                            <p className="font-bold text-green-600">{restaurant.revenue.toFixed(2)} ₺</p>
+                            <p className="text-xs text-gray-500">Toplam gelir</p>
+                          </div>
                         </div>
                       ))}
                     </div>
