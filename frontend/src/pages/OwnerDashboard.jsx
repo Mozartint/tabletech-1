@@ -236,6 +236,10 @@ const OwnerDashboard = () => {
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <Tabs value={activeTab} onValueChange={setActiveTab}>
           <TabsList className="mb-6">
+            <TabsTrigger value="overview" className="gap-2" data-testid="overview-tab">
+              <TrendingUp className="w-4 h-4" />
+              Genel Bakış
+            </TabsTrigger>
             <TabsTrigger value="menu" className="gap-2" data-testid="menu-tab">
               <UtensilsCrossed className="w-4 h-4" />
               Menü
@@ -249,6 +253,157 @@ const OwnerDashboard = () => {
               Siparişler
             </TabsTrigger>
           </TabsList>
+
+          <TabsContent value="overview">
+            {stats && (
+              <div className="space-y-6">
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+                  <Card className="shadow-sm hover:shadow-md transition-shadow border-l-4 border-l-orange-500">
+                    <CardHeader className="pb-3">
+                      <CardTitle className="text-sm font-medium text-gray-600">Bugünkü Siparişler</CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="flex items-center justify-between">
+                        <div className="text-3xl font-bold text-gray-900">{stats.today.orders}</div>
+                        <ShoppingBag className="w-8 h-8 text-orange-500" />
+                      </div>
+                      <p className="text-xs text-gray-500 mt-2">Bugün</p>
+                    </CardContent>
+                  </Card>
+
+                  <Card className="shadow-sm hover:shadow-md transition-shadow border-l-4 border-l-green-500">
+                    <CardHeader className="pb-3">
+                      <CardTitle className="text-sm font-medium text-gray-600">Bugünkü Gelir</CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="flex items-center justify-between">
+                        <div className="text-3xl font-bold text-gray-900">{stats.today.revenue.toFixed(0)} ₺</div>
+                        <DollarSign className="w-8 h-8 text-green-500" />
+                      </div>
+                      <p className="text-xs text-gray-500 mt-2">Bugün</p>
+                    </CardContent>
+                  </Card>
+
+                  <Card className="shadow-sm hover:shadow-md transition-shadow border-l-4 border-l-blue-500">
+                    <CardHeader className="pb-3">
+                      <CardTitle className="text-sm font-medium text-gray-600">Haftalık Siparişler</CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="flex items-center justify-between">
+                        <div className="text-3xl font-bold text-gray-900">{stats.week.orders}</div>
+                        <Clock className="w-8 h-8 text-blue-500" />
+                      </div>
+                      <p className="text-xs text-gray-500 mt-2">Son 7 gün</p>
+                    </CardContent>
+                  </Card>
+
+                  <Card className="shadow-sm hover:shadow-md transition-shadow border-l-4 border-l-purple-500">
+                    <CardHeader className="pb-3">
+                      <CardTitle className="text-sm font-medium text-gray-600">Haftalık Gelir</CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="flex items-center justify-between">
+                        <div className="text-3xl font-bold text-gray-900">{stats.week.revenue.toFixed(0)} ₺</div>
+                        <TrendingUp className="w-8 h-8 text-purple-500" />
+                      </div>
+                      <p className="text-xs text-gray-500 mt-2">Son 7 gün</p>
+                    </CardContent>
+                  </Card>
+                </div>
+
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                  <Card className="shadow-sm">
+                    <CardHeader>
+                      <CardTitle>Son 7 Gün Performans</CardTitle>
+                      <CardDescription>Sipariş ve gelir trendi</CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                      <ResponsiveContainer width="100%" height={300}>
+                        <LineChart data={stats.daily_stats}>
+                          <CartesianGrid strokeDasharray="3 3" />
+                          <XAxis dataKey="date" />
+                          <YAxis />
+                          <Tooltip />
+                          <Legend />
+                          <Line type="monotone" dataKey="orders" stroke="#f97316" strokeWidth={2} name="Sipariş" />
+                          <Line type="monotone" dataKey="revenue" stroke="#22c55e" strokeWidth={2} name="Gelir (₺)" />
+                        </LineChart>
+                      </ResponsiveContainer>
+                    </CardContent>
+                  </Card>
+
+                  <Card className="shadow-sm">
+                    <CardHeader>
+                      <CardTitle>Sipariş Durumu Dağılımı</CardTitle>
+                      <CardDescription>Mevcut sipariş durumları</CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                      <ResponsiveContainer width="100%" height={300}>
+                        <PieChart>
+                          <Pie
+                            data={[
+                              { name: 'Bekliyor', value: stats.status_distribution.pending, color: '#fbbf24' },
+                              { name: 'Hazırlanıyor', value: stats.status_distribution.preparing, color: '#3b82f6' },
+                              { name: 'Hazır', value: stats.status_distribution.ready, color: '#22c55e' },
+                              { name: 'Tamamlandı', value: stats.status_distribution.completed, color: '#6b7280' }
+                            ]}
+                            cx="50%"
+                            cy="50%"
+                            labelLine={false}
+                            label={({ name, value }) => `${name}: ${value}`}
+                            outerRadius={100}
+                            fill="#8884d8"
+                            dataKey="value"
+                          >
+                            {[
+                              { name: 'Bekliyor', value: stats.status_distribution.pending, color: '#fbbf24' },
+                              { name: 'Hazırlanıyor', value: stats.status_distribution.preparing, color: '#3b82f6' },
+                              { name: 'Hazır', value: stats.status_distribution.ready, color: '#22c55e' },
+                              { name: 'Tamamlandı', value: stats.status_distribution.completed, color: '#6b7280' }
+                            ].map((entry, index) => (
+                              <Cell key={`cell-${index}`} fill={entry.color} />
+                            ))}
+                          </Pie>
+                          <Tooltip />
+                        </PieChart>
+                      </ResponsiveContainer>
+                    </CardContent>
+                  </Card>
+                </div>
+
+                <Card className="shadow-sm">
+                  <CardHeader>
+                    <CardTitle className="flex items-center gap-2">
+                      <Award className="w-5 h-5 text-orange-500" />
+                      En Popüler Ürünler
+                    </CardTitle>
+                    <CardDescription>En çok sipariş edilen menü öğeleri</CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="space-y-3">
+                      {stats.popular_items.map((item, idx) => (
+                        <div key={idx} className="flex items-center justify-between p-3 bg-gradient-to-r from-orange-50 to-white rounded-lg border border-orange-100">
+                          <div className="flex items-center gap-3">
+                            <div className="w-8 h-8 bg-orange-500 text-white rounded-full flex items-center justify-center font-bold text-sm">
+                              {idx + 1}
+                            </div>
+                            <p className="font-medium text-gray-900">{item.name}</p>
+                          </div>
+                          <div className="text-right">
+                            <p className="font-bold text-orange-600">{item.count} adet</p>
+                            <p className="text-xs text-gray-500">Sipariş edildi</p>
+                          </div>
+                        </div>
+                      ))}
+                      {stats.popular_items.length === 0 && (
+                        <p className="text-center text-gray-500 py-8">Henüz sipariş yok</p>
+                      )}
+                    </div>
+                  </CardContent>
+                </Card>
+              </div>
+            )}
+          </TabsContent>
 
           <TabsContent value="menu">
             <div className="space-y-8">
