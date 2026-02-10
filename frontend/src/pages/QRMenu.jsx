@@ -98,12 +98,14 @@ const QRMenu = () => {
   const handleSubmitOrder = async () => {
     setSubmitting(true);
     try {
-      await axios.post(`${API}/orders`, {
+      const response = await axios.post(`${API}/orders`, {
         table_id: tableId,
         items: cart,
         payment_method: paymentMethod
       });
       toast.success('Siparişiniz alındı! Mutfağa iletildi.');
+      setPlacedOrder(response.data);
+      setOrderPlaced(true);
       setCart([]);
       setCheckoutDialog(false);
     } catch (error) {
@@ -111,6 +113,36 @@ const QRMenu = () => {
       console.error(error);
     } finally {
       setSubmitting(false);
+    }
+  };
+
+  const handleCallWaiter = async () => {
+    try {
+      await axios.post(`${API}/waiter-call`, {
+        table_id: tableId
+      });
+      toast.success('Garson çağrıldı! Hemen gelecek.');
+    } catch (error) {
+      toast.error('Garson çağrılamadı');
+      console.error(error);
+    }
+  };
+
+  const handleSubmitReview = async () => {
+    try {
+      await axios.post(`${API}/reviews`, {
+        restaurant_id: restaurant.id,
+        order_id: placedOrder?.id,
+        rating: rating,
+        comment: reviewComment
+      });
+      toast.success('Değerlendirmeniz için teşekkürler!');
+      setReviewDialog(false);
+      setRating(5);
+      setReviewComment('');
+    } catch (error) {
+      toast.error('Değerlendirme gönderilemedi');
+      console.error(error);
     }
   };
 
