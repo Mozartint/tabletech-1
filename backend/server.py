@@ -791,6 +791,8 @@ async def create_order(data: OrderCreate):
     if not table:
         raise HTTPException(status_code=404, detail="Table not found")
     
+    max_prep_time = max([item.preparation_time_minutes for item in data.items], default=15)
+    
     order = Order(
         restaurant_id=table["restaurant_id"],
         table_id=data.table_id,
@@ -798,7 +800,8 @@ async def create_order(data: OrderCreate):
         items=data.items,
         total_amount=sum(item.price * item.quantity for item in data.items),
         payment_method=data.payment_method,
-        status="pending"
+        status="pending",
+        estimated_completion_minutes=max_prep_time
     )
     
     doc = order.model_dump()
@@ -807,6 +810,78 @@ async def create_order(data: OrderCreate):
     await db.orders.insert_one(doc)
     
     return order
+
+@api_router.post("/reviews", response_model=Review)
+async def create_review(data: ReviewCreate):
+    review = Review(
+        restaurant_id=data.restaurant_id,
+        order_id=data.order_id,
+        rating=data.rating,
+        comment=data.comment
+    )
+    
+    doc = review.model_dump()
+    doc['created_at'] = doc['created_at'].isoformat()
+    await db.reviews.insert_one(doc)
+    
+    return review
+
+@api_router.post("/waiter-call", response_model=WaiterCall)
+async def call_waiter(data: WaiterCallCreate):
+    table = await db.tables.find_one({"id": data.table_id}, {"_id": 0})
+    if not table:
+        raise HTTPException(status_code=404, detail="Table not found")
+    
+    waiter_call = WaiterCall(
+        restaurant_id=table["restaurant_id"],
+        table_id=data.table_id,
+        table_number=table["table_number"],
+        status="pending"
+    )
+    
+    doc = waiter_call.model_dump()
+    doc['created_at'] = doc['created_at'].isoformat()
+    await db.waiter_calls.insert_one(doc)
+    
+    return waiter_call
+
+@api_router.get("/admin/reviews", response_model=List[Review])
+async def get_all_reviews(current_user: User = Depends(get_current_user)):
+    if current_user.role != "admin":
+        raise HTTPException(status_code=403, detail="Admin only")
+    
+    reviews = await db.reviews.find({}, {"_id": 0}).sort("created_at", -1).to_list(1000)
+    
+    for r in reviews:
+        if isinstance(r.get('created_at'), str):
+            r['created_at'] = datetime.fromisoformat(r['created_at'])
+    return reviews
+
+@api_router.get("/owner/waiter-calls")
+async def get_waiter_calls(current_user: User = Depends(get_current_user)):
+    if current_user.role != "owner":
+        raise HTTPException(status_code=403, detail="Owner only")
+    
+    calls = await db.waiter_calls.find(
+        {"restaurant_id": current_user.restaurant_id, "status": "pending"},
+        {"_id": 0}
+    ).sort("created_at", -1).to_list(100)
+    
+    for c in calls:
+        if isinstance(c.get('created_at'), str):
+            c['created_at'] = datetime.fromisoformat(c['created_at'])
+    return calls
+
+@api_router.put("/owner/waiter-calls/{call_id}")
+async def resolve_waiter_call(call_id: str, current_user: User = Depends(get_current_user)):
+    if current_user.role != "owner":
+        raise HTTPException(status_code=403, detail="Owner only")
+    
+    await db.waiter_calls.update_one(
+        {"id": call_id, "restaurant_id": current_user.restaurant_id},
+        {"$set": {"status": "resolved"}}
+    )
+    return {"message": "Waiter call resolved"}
 
 app.include_router(api_router)
 
