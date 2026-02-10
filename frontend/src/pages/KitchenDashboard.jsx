@@ -50,8 +50,10 @@ const KitchenDashboard = () => {
       const newOrders = orders.filter(o => o.status === 'pending');
       
       if (newOrders.length > lastOrderCount && lastOrderCount > 0) {
+        const latestOrder = newOrders[0];
+        setNewOrderAlert(latestOrder);
         playNotificationSound();
-        toast.success(`Yeni sipariş! Masa ${newOrders[0].table_number}`, {
+        toast.success(`Yeni sipariş! Masa ${latestOrder.table_number}`, {
           duration: 5000
         });
       }
@@ -59,6 +61,20 @@ const KitchenDashboard = () => {
       setLastOrderCount(newOrders.length);
     }
   }, [orders]);
+
+  const handleAcceptOrder = async (orderId) => {
+    setNewOrderAlert(null);
+    try {
+      const token = localStorage.getItem('token');
+      await axios.put(`${API}/kitchen/orders/${orderId}/status`,
+        { status: 'preparing' },
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+      fetchOrders();
+    } catch (error) {
+      console.error(error);
+    }
+  };
 
   const fetchOrders = async () => {
     try {
