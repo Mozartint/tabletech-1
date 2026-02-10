@@ -578,51 +578,6 @@ const AdminDashboard = () => {
               )}
             </div>
           </TabsContent>
-              
-              {reviews.map((review) => {
-                const restaurant = restaurants.find(r => r.id === review.restaurant_id);
-                return (
-                  <Card key={review.id} className="shadow-sm" data-testid="review-card">
-                    <CardHeader className="pb-3">
-                      <div className="flex justify-between items-start">
-                        <div>
-                          <CardTitle className="text-base">
-                            {restaurant?.name || 'Bilinmeyen Restoran'}
-                          </CardTitle>
-                          <p className="text-sm text-gray-500 mt-1">
-                            {new Date(review.created_at).toLocaleString('tr-TR')}
-                          </p>
-                        </div>
-                        <div className="flex items-center gap-1">
-                          {[...Array(5)].map((_, i) => (
-                            <span key={i} className={`text-lg ${i < review.rating ? 'text-yellow-400' : 'text-gray-300'}`}>
-                              ★
-                            </span>
-                          ))}
-                          <span className="ml-2 text-sm font-medium">{review.rating}/5</span>
-                        </div>
-                      </div>
-                    </CardHeader>
-                    <CardContent>
-                      <div className="space-y-2">
-                        <p className="text-gray-700">{review.comment}</p>
-                        <div className="pt-2 border-t text-sm text-gray-500">
-                          <span className="font-medium">Müşteri:</span> {review.customer_name || 'Anonim'}
-                        </div>
-                      </div>
-                    </CardContent>
-                  </Card>
-                );
-              })}
-
-              {reviews.length === 0 && (
-                <div className="text-center py-12">
-                  <TrendingUp className="w-12 h-12 text-gray-400 mx-auto mb-4" />
-                  <p className="text-gray-500">Henüz değerlendirme yok</p>
-                </div>
-              )}
-            </div>
-          </TabsContent>
         </Tabs>
       </main>
 
