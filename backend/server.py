@@ -291,6 +291,61 @@ async def delete_restaurant(restaurant_id: str, current_user: User = Depends(get
     
     return {"message": "Restaurant deleted"}
 
+@api_router.get("/admin/stats")
+async def get_admin_stats(current_user: User = Depends(get_current_user)):
+    if current_user.role != "admin":
+        raise HTTPException(status_code=403, detail="Admin only")
+    
+    total_restaurants = await db.restaurants.count_documents({})
+    active_restaurants = await db.restaurants.count_documents({"subscription_status": "active"})
+    total_orders = await db.orders.count_documents({})
+    
+    orders = await db.orders.find({}, {"_id": 0, "total_amount": 1}).to_list(10000)
+    total_revenue = sum(order.get("total_amount", 0) for order in orders)
+    
+    today_start = datetime.now(timezone.utc).replace(hour=0, minute=0, second=0, microsecond=0)
+    today_orders = await db.orders.count_documents({
+        "created_at": {"$gte": today_start.isoformat()}
+    })
+    
+    return {
+        "total_restaurants": total_restaurants,
+        "active_restaurants": active_restaurants,
+        "total_orders": total_orders,
+        "total_revenue": round(total_revenue, 2),
+        "today_orders": today_orders
+    }
+
+@api_router.get("/admin/orders", response_model=List[Order])
+async def get_all_orders(current_user: User = Depends(get_current_user)):
+    if current_user.role != "admin":
+        raise HTTPException(status_code=403, detail="Admin only")
+    
+    orders = await db.orders.find({}, {"_id": 0}).sort("created_at", -1).to_list(1000)
+    
+    for o in orders:
+        if isinstance(o.get('created_at'), str):
+            o['created_at'] = datetime.fromisoformat(o['created_at'])
+        if isinstance(o.get('updated_at'), str):
+            o['updated_at'] = datetime.fromisoformat(o['updated_at'])
+    return orders
+
+@api_router.get("/admin/restaurants/{restaurant_id}/staff")
+async def get_restaurant_staff(restaurant_id: str, current_user: User = Depends(get_current_user)):
+    if current_user.role != "admin":
+        raise HTTPException(status_code=403, detail="Admin only")
+    
+    staff = await db.users.find(
+        {"restaurant_id": restaurant_id},
+        {"_id": 0, "password": 0}
+    ).to_list(100)
+    
+    for s in staff:
+        if isinstance(s.get('created_at'), str):
+            s['created_at'] = datetime.fromisoformat(s['created_at'])
+    
+    return staff
+
 @api_router.get("/owner/menu/categories", response_model=List[MenuCategory])
 async def get_categories(current_user: User = Depends(get_current_user)):
     if current_user.role != "owner":
