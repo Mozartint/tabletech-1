@@ -201,6 +201,10 @@ const AdminDashboard = () => {
               <ShoppingBag className="w-4 h-4" />
               Tüm Siparişler
             </TabsTrigger>
+            <TabsTrigger value="reviews" className="gap-2" data-testid="reviews-tab">
+              <TrendingUp className="w-4 h-4" />
+              Değerlendirmeler
+            </TabsTrigger>
           </TabsList>
 
           <TabsContent value="overview">
