@@ -68,6 +68,13 @@ const AdminDashboard = () => {
         });
         setOrders(ordersRes.data);
       }
+      
+      if (activeTab === 'reviews') {
+        const reviewsRes = await axios.get(`${API}/admin/reviews`, {
+          headers: { Authorization: `Bearer ${token}` }
+        });
+        setReviews(reviewsRes.data);
+      }
     } catch (error) {
       toast.error('Veri yüklenemedi');
       console.error(error);
