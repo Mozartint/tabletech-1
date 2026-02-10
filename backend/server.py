@@ -1,72 +1,577 @@
-from fastapi import FastAPI, APIRouter
+from fastapi import FastAPI, APIRouter, HTTPException, Depends, status
+from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from dotenv import load_dotenv
 from starlette.middleware.cors import CORSMiddleware
 from motor.motor_asyncio import AsyncIOMotorClient
 import os
 import logging
 from pathlib import Path
-from pydantic import BaseModel, Field, ConfigDict
-from typing import List
+from pydantic import BaseModel, Field, ConfigDict, EmailStr
+from typing import List, Optional
 import uuid
-from datetime import datetime, timezone
-
+from datetime import datetime, timezone, timedelta
+from passlib.context import CryptContext
+from jose import JWTError, jwt
+import qrcode
+import io
+import base64
 
 ROOT_DIR = Path(__file__).parent
 load_dotenv(ROOT_DIR / '.env')
 
-# MongoDB connection
 mongo_url = os.environ['MONGO_URL']
 client = AsyncIOMotorClient(mongo_url)
 db = client[os.environ['DB_NAME']]
 
-# Create the main app without a prefix
 app = FastAPI()
-
-# Create a router with the /api prefix
 api_router = APIRouter(prefix="/api")
 
+pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
+security = HTTPBearer()
 
-# Define Models
-class StatusCheck(BaseModel):
-    model_config = ConfigDict(extra="ignore")  # Ignore MongoDB's _id field
-    
+SECRET_KEY = os.environ.get("JWT_SECRET_KEY", "your-secret-key-change-this")
+ALGORITHM = "HS256"
+ACCESS_TOKEN_EXPIRE_MINUTES = 60 * 24 * 7
+
+class User(BaseModel):
+    model_config = ConfigDict(extra="ignore")
     id: str = Field(default_factory=lambda: str(uuid.uuid4()))
-    client_name: str
-    timestamp: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+    email: EmailStr
+    full_name: str
+    role: str
+    restaurant_id: Optional[str] = None
+    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
 
-class StatusCheckCreate(BaseModel):
-    client_name: str
+class UserCreate(BaseModel):
+    email: EmailStr
+    password: str
+    full_name: str
+    role: str
+    restaurant_id: Optional[str] = None
 
-# Add your routes to the router instead of directly to app
-@api_router.get("/")
-async def root():
-    return {"message": "Hello World"}
+class UserLogin(BaseModel):
+    email: EmailStr
+    password: str
 
-@api_router.post("/status", response_model=StatusCheck)
-async def create_status_check(input: StatusCheckCreate):
-    status_dict = input.model_dump()
-    status_obj = StatusCheck(**status_dict)
+class Token(BaseModel):
+    access_token: str
+    token_type: str
+    user: User
+
+class Restaurant(BaseModel):
+    model_config = ConfigDict(extra="ignore")
+    id: str = Field(default_factory=lambda: str(uuid.uuid4()))
+    name: str
+    address: str
+    phone: str
+    owner_id: str
+    subscription_status: str = "active"
+    subscription_end_date: datetime
+    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+
+class RestaurantCreate(BaseModel):
+    name: str
+    address: str
+    phone: str
+    owner_email: EmailStr
+    owner_password: str
+    owner_full_name: str
+
+class Table(BaseModel):
+    model_config = ConfigDict(extra="ignore")
+    id: str = Field(default_factory=lambda: str(uuid.uuid4()))
+    restaurant_id: str
+    table_number: str
+    qr_code: str
+    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+
+class TableCreate(BaseModel):
+    table_number: str
+
+class MenuCategory(BaseModel):
+    model_config = ConfigDict(extra="ignore")
+    id: str = Field(default_factory=lambda: str(uuid.uuid4()))
+    restaurant_id: str
+    name: str
+    order: int = 0
+    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+
+class MenuCategoryCreate(BaseModel):
+    name: str
+    order: int = 0
+
+class MenuItem(BaseModel):
+    model_config = ConfigDict(extra="ignore")
+    id: str = Field(default_factory=lambda: str(uuid.uuid4()))
+    restaurant_id: str
+    category_id: str
+    name: str
+    description: str
+    price: float
+    image_url: Optional[str] = None
+    available: bool = True
+    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+
+class MenuItemCreate(BaseModel):
+    category_id: str
+    name: str
+    description: str
+    price: float
+    image_url: Optional[str] = None
+    available: bool = True
+
+class OrderItem(BaseModel):
+    menu_item_id: str
+    name: str
+    price: float
+    quantity: int
+
+class Order(BaseModel):
+    model_config = ConfigDict(extra="ignore")
+    id: str = Field(default_factory=lambda: str(uuid.uuid4()))
+    restaurant_id: str
+    table_id: str
+    table_number: str
+    items: List[OrderItem]
+    total_amount: float
+    payment_method: str
+    status: str = "pending"
+    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+    updated_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+
+class OrderCreate(BaseModel):
+    table_id: str
+    items: List[OrderItem]
+    payment_method: str
+
+class OrderStatusUpdate(BaseModel):
+    status: str
+
+class OrderPaymentUpdate(BaseModel):
+    payment_status: str
+
+def hash_password(password: str) -> str:
+    return pwd_context.hash(password)
+
+def verify_password(plain_password: str, hashed_password: str) -> bool:
+    return pwd_context.verify(plain_password, hashed_password)
+
+def create_access_token(data: dict):
+    to_encode = data.copy()
+    expire = datetime.now(timezone.utc) + timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
+    to_encode.update({"exp": expire})
+    encoded_jwt = jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
+    return encoded_jwt
+
+async def get_current_user(credentials: HTTPAuthorizationCredentials = Depends(security)):
+    token = credentials.credentials
+    try:
+        payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
+        user_id: str = payload.get("sub")
+        if user_id is None:
+            raise HTTPException(status_code=401, detail="Invalid token")
+    except JWTError:
+        raise HTTPException(status_code=401, detail="Invalid token")
     
-    # Convert to dict and serialize datetime to ISO string for MongoDB
-    doc = status_obj.model_dump()
-    doc['timestamp'] = doc['timestamp'].isoformat()
+    user = await db.users.find_one({"id": user_id}, {"_id": 0})
+    if user is None:
+        raise HTTPException(status_code=401, detail="User not found")
     
-    _ = await db.status_checks.insert_one(doc)
-    return status_obj
+    if isinstance(user['created_at'], str):
+        user['created_at'] = datetime.fromisoformat(user['created_at'])
+    
+    return User(**user)
 
-@api_router.get("/status", response_model=List[StatusCheck])
-async def get_status_checks():
-    # Exclude MongoDB's _id field from the query results
-    status_checks = await db.status_checks.find({}, {"_id": 0}).to_list(1000)
+def generate_qr_code(data: str) -> str:
+    qr = qrcode.QRCode(version=1, box_size=10, border=5)
+    qr.add_data(data)
+    qr.make(fit=True)
+    img = qr.make_image(fill_color="black", back_color="white")
     
-    # Convert ISO string timestamps back to datetime objects
-    for check in status_checks:
-        if isinstance(check['timestamp'], str):
-            check['timestamp'] = datetime.fromisoformat(check['timestamp'])
-    
-    return status_checks
+    buffered = io.BytesIO()
+    img.save(buffered, format="PNG")
+    img_str = base64.b64encode(buffered.getvalue()).decode()
+    return f"data:image/png;base64,{img_str}"
 
-# Include the router in the main app
+@api_router.post("/auth/register", response_model=User)
+async def register(user_data: UserCreate, current_user: User = Depends(get_current_user)):
+    if current_user.role != "admin":
+        raise HTTPException(status_code=403, detail="Only admin can register users")
+    
+    existing = await db.users.find_one({"email": user_data.email}, {"_id": 0})
+    if existing:
+        raise HTTPException(status_code=400, detail="Email already registered")
+    
+    user = User(
+        email=user_data.email,
+        full_name=user_data.full_name,
+        role=user_data.role,
+        restaurant_id=user_data.restaurant_id
+    )
+    
+    doc = user.model_dump()
+    doc['created_at'] = doc['created_at'].isoformat()
+    doc['password'] = hash_password(user_data.password)
+    
+    await db.users.insert_one(doc)
+    return user
+
+@api_router.post("/auth/login", response_model=Token)
+async def login(credentials: UserLogin):
+    user_doc = await db.users.find_one({"email": credentials.email}, {"_id": 0})
+    if not user_doc or not verify_password(credentials.password, user_doc.get("password", "")):
+        raise HTTPException(status_code=401, detail="Invalid credentials")
+    
+    if isinstance(user_doc['created_at'], str):
+        user_doc['created_at'] = datetime.fromisoformat(user_doc['created_at'])
+    
+    user_doc.pop('password', None)
+    user = User(**user_doc)
+    
+    access_token = create_access_token(data={"sub": user.id})
+    return Token(access_token=access_token, token_type="bearer", user=user)
+
+@api_router.get("/admin/restaurants", response_model=List[Restaurant])
+async def get_restaurants(current_user: User = Depends(get_current_user)):
+    if current_user.role != "admin":
+        raise HTTPException(status_code=403, detail="Admin only")
+    
+    restaurants = await db.restaurants.find({}, {"_id": 0}).to_list(1000)
+    for r in restaurants:
+        if isinstance(r.get('created_at'), str):
+            r['created_at'] = datetime.fromisoformat(r['created_at'])
+        if isinstance(r.get('subscription_end_date'), str):
+            r['subscription_end_date'] = datetime.fromisoformat(r['subscription_end_date'])
+    return restaurants
+
+@api_router.post("/admin/restaurants", response_model=Restaurant)
+async def create_restaurant(data: RestaurantCreate, current_user: User = Depends(get_current_user)):
+    if current_user.role != "admin":
+        raise HTTPException(status_code=403, detail="Admin only")
+    
+    owner = User(
+        email=data.owner_email,
+        full_name=data.owner_full_name,
+        role="owner"
+    )
+    
+    restaurant = Restaurant(
+        name=data.name,
+        address=data.address,
+        phone=data.phone,
+        owner_id=owner.id,
+        subscription_end_date=datetime.now(timezone.utc) + timedelta(days=30)
+    )
+    
+    owner.restaurant_id = restaurant.id
+    
+    owner_doc = owner.model_dump()
+    owner_doc['created_at'] = owner_doc['created_at'].isoformat()
+    owner_doc['password'] = hash_password(data.owner_password)
+    await db.users.insert_one(owner_doc)
+    
+    restaurant_doc = restaurant.model_dump()
+    restaurant_doc['created_at'] = restaurant_doc['created_at'].isoformat()
+    restaurant_doc['subscription_end_date'] = restaurant_doc['subscription_end_date'].isoformat()
+    await db.restaurants.insert_one(restaurant_doc)
+    
+    return restaurant
+
+@api_router.delete("/admin/restaurants/{restaurant_id}")
+async def delete_restaurant(restaurant_id: str, current_user: User = Depends(get_current_user)):
+    if current_user.role != "admin":
+        raise HTTPException(status_code=403, detail="Admin only")
+    
+    await db.restaurants.delete_one({"id": restaurant_id})
+    await db.users.delete_many({"restaurant_id": restaurant_id})
+    await db.tables.delete_many({"restaurant_id": restaurant_id})
+    await db.menu_categories.delete_many({"restaurant_id": restaurant_id})
+    await db.menu_items.delete_many({"restaurant_id": restaurant_id})
+    await db.orders.delete_many({"restaurant_id": restaurant_id})
+    
+    return {"message": "Restaurant deleted"}
+
+@api_router.get("/owner/menu/categories", response_model=List[MenuCategory])
+async def get_categories(current_user: User = Depends(get_current_user)):
+    if current_user.role != "owner":
+        raise HTTPException(status_code=403, detail="Owner only")
+    
+    categories = await db.menu_categories.find(
+        {"restaurant_id": current_user.restaurant_id}, {"_id": 0}
+    ).sort("order", 1).to_list(1000)
+    
+    for c in categories:
+        if isinstance(c.get('created_at'), str):
+            c['created_at'] = datetime.fromisoformat(c['created_at'])
+    return categories
+
+@api_router.post("/owner/menu/categories", response_model=MenuCategory)
+async def create_category(data: MenuCategoryCreate, current_user: User = Depends(get_current_user)):
+    if current_user.role != "owner":
+        raise HTTPException(status_code=403, detail="Owner only")
+    
+    category = MenuCategory(
+        restaurant_id=current_user.restaurant_id,
+        name=data.name,
+        order=data.order
+    )
+    
+    doc = category.model_dump()
+    doc['created_at'] = doc['created_at'].isoformat()
+    await db.menu_categories.insert_one(doc)
+    
+    return category
+
+@api_router.put("/owner/menu/categories/{category_id}", response_model=MenuCategory)
+async def update_category(category_id: str, data: MenuCategoryCreate, current_user: User = Depends(get_current_user)):
+    if current_user.role != "owner":
+        raise HTTPException(status_code=403, detail="Owner only")
+    
+    await db.menu_categories.update_one(
+        {"id": category_id, "restaurant_id": current_user.restaurant_id},
+        {"$set": {"name": data.name, "order": data.order}}
+    )
+    
+    category_doc = await db.menu_categories.find_one({"id": category_id}, {"_id": 0})
+    if isinstance(category_doc.get('created_at'), str):
+        category_doc['created_at'] = datetime.fromisoformat(category_doc['created_at'])
+    return MenuCategory(**category_doc)
+
+@api_router.delete("/owner/menu/categories/{category_id}")
+async def delete_category(category_id: str, current_user: User = Depends(get_current_user)):
+    if current_user.role != "owner":
+        raise HTTPException(status_code=403, detail="Owner only")
+    
+    await db.menu_categories.delete_one({"id": category_id, "restaurant_id": current_user.restaurant_id})
+    await db.menu_items.delete_many({"category_id": category_id})
+    return {"message": "Category deleted"}
+
+@api_router.get("/owner/menu/items", response_model=List[MenuItem])
+async def get_menu_items(current_user: User = Depends(get_current_user)):
+    if current_user.role != "owner":
+        raise HTTPException(status_code=403, detail="Owner only")
+    
+    items = await db.menu_items.find(
+        {"restaurant_id": current_user.restaurant_id}, {"_id": 0}
+    ).to_list(1000)
+    
+    for item in items:
+        if isinstance(item.get('created_at'), str):
+            item['created_at'] = datetime.fromisoformat(item['created_at'])
+    return items
+
+@api_router.post("/owner/menu/items", response_model=MenuItem)
+async def create_menu_item(data: MenuItemCreate, current_user: User = Depends(get_current_user)):
+    if current_user.role != "owner":
+        raise HTTPException(status_code=403, detail="Owner only")
+    
+    item = MenuItem(
+        restaurant_id=current_user.restaurant_id,
+        category_id=data.category_id,
+        name=data.name,
+        description=data.description,
+        price=data.price,
+        image_url=data.image_url,
+        available=data.available
+    )
+    
+    doc = item.model_dump()
+    doc['created_at'] = doc['created_at'].isoformat()
+    await db.menu_items.insert_one(doc)
+    
+    return item
+
+@api_router.put("/owner/menu/items/{item_id}", response_model=MenuItem)
+async def update_menu_item(item_id: str, data: MenuItemCreate, current_user: User = Depends(get_current_user)):
+    if current_user.role != "owner":
+        raise HTTPException(status_code=403, detail="Owner only")
+    
+    update_data = data.model_dump()
+    await db.menu_items.update_one(
+        {"id": item_id, "restaurant_id": current_user.restaurant_id},
+        {"$set": update_data}
+    )
+    
+    item_doc = await db.menu_items.find_one({"id": item_id}, {"_id": 0})
+    if isinstance(item_doc.get('created_at'), str):
+        item_doc['created_at'] = datetime.fromisoformat(item_doc['created_at'])
+    return MenuItem(**item_doc)
+
+@api_router.delete("/owner/menu/items/{item_id}")
+async def delete_menu_item(item_id: str, current_user: User = Depends(get_current_user)):
+    if current_user.role != "owner":
+        raise HTTPException(status_code=403, detail="Owner only")
+    
+    await db.menu_items.delete_one({"id": item_id, "restaurant_id": current_user.restaurant_id})
+    return {"message": "Menu item deleted"}
+
+@api_router.get("/owner/tables", response_model=List[Table])
+async def get_tables(current_user: User = Depends(get_current_user)):
+    if current_user.role != "owner":
+        raise HTTPException(status_code=403, detail="Owner only")
+    
+    tables = await db.tables.find(
+        {"restaurant_id": current_user.restaurant_id}, {"_id": 0}
+    ).to_list(1000)
+    
+    for t in tables:
+        if isinstance(t.get('created_at'), str):
+            t['created_at'] = datetime.fromisoformat(t['created_at'])
+    return tables
+
+@api_router.post("/owner/tables", response_model=Table)
+async def create_table(data: TableCreate, current_user: User = Depends(get_current_user)):
+    if current_user.role != "owner":
+        raise HTTPException(status_code=403, detail="Owner only")
+    
+    table = Table(
+        restaurant_id=current_user.restaurant_id,
+        table_number=data.table_number,
+        qr_code=""
+    )
+    
+    frontend_url = os.environ.get('FRONTEND_URL', 'http://localhost:3000')
+    qr_data = f"{frontend_url}/menu/{table.id}"
+    table.qr_code = generate_qr_code(qr_data)
+    
+    doc = table.model_dump()
+    doc['created_at'] = doc['created_at'].isoformat()
+    await db.tables.insert_one(doc)
+    
+    return table
+
+@api_router.delete("/owner/tables/{table_id}")
+async def delete_table(table_id: str, current_user: User = Depends(get_current_user)):
+    if current_user.role != "owner":
+        raise HTTPException(status_code=403, detail="Owner only")
+    
+    await db.tables.delete_one({"id": table_id, "restaurant_id": current_user.restaurant_id})
+    return {"message": "Table deleted"}
+
+@api_router.get("/owner/orders", response_model=List[Order])
+async def get_owner_orders(current_user: User = Depends(get_current_user)):
+    if current_user.role != "owner":
+        raise HTTPException(status_code=403, detail="Owner only")
+    
+    orders = await db.orders.find(
+        {"restaurant_id": current_user.restaurant_id}, {"_id": 0}
+    ).sort("created_at", -1).to_list(1000)
+    
+    for o in orders:
+        if isinstance(o.get('created_at'), str):
+            o['created_at'] = datetime.fromisoformat(o['created_at'])
+        if isinstance(o.get('updated_at'), str):
+            o['updated_at'] = datetime.fromisoformat(o['updated_at'])
+    return orders
+
+@api_router.get("/kitchen/orders", response_model=List[Order])
+async def get_kitchen_orders(current_user: User = Depends(get_current_user)):
+    if current_user.role != "kitchen":
+        raise HTTPException(status_code=403, detail="Kitchen only")
+    
+    orders = await db.orders.find(
+        {"restaurant_id": current_user.restaurant_id, "status": {"$in": ["pending", "preparing"]}},
+        {"_id": 0}
+    ).sort("created_at", 1).to_list(1000)
+    
+    for o in orders:
+        if isinstance(o.get('created_at'), str):
+            o['created_at'] = datetime.fromisoformat(o['created_at'])
+        if isinstance(o.get('updated_at'), str):
+            o['updated_at'] = datetime.fromisoformat(o['updated_at'])
+    return orders
+
+@api_router.put("/kitchen/orders/{order_id}/status")
+async def update_order_status(order_id: str, data: OrderStatusUpdate, current_user: User = Depends(get_current_user)):
+    if current_user.role != "kitchen":
+        raise HTTPException(status_code=403, detail="Kitchen only")
+    
+    await db.orders.update_one(
+        {"id": order_id, "restaurant_id": current_user.restaurant_id},
+        {"$set": {"status": data.status, "updated_at": datetime.now(timezone.utc).isoformat()}}
+    )
+    return {"message": "Order status updated"}
+
+@api_router.get("/cashier/orders", response_model=List[Order])
+async def get_cashier_orders(current_user: User = Depends(get_current_user)):
+    if current_user.role != "cashier":
+        raise HTTPException(status_code=403, detail="Cashier only")
+    
+    orders = await db.orders.find(
+        {"restaurant_id": current_user.restaurant_id, "payment_method": "cash", "status": {"$ne": "completed"}},
+        {"_id": 0}
+    ).sort("created_at", 1).to_list(1000)
+    
+    for o in orders:
+        if isinstance(o.get('created_at'), str):
+            o['created_at'] = datetime.fromisoformat(o['created_at'])
+        if isinstance(o.get('updated_at'), str):
+            o['updated_at'] = datetime.fromisoformat(o['updated_at'])
+    return orders
+
+@api_router.put("/cashier/orders/{order_id}/payment")
+async def update_order_payment(order_id: str, data: OrderPaymentUpdate, current_user: User = Depends(get_current_user)):
+    if current_user.role != "cashier":
+        raise HTTPException(status_code=403, detail="Cashier only")
+    
+    update_fields = {"updated_at": datetime.now(timezone.utc).isoformat()}
+    if data.payment_status == "paid":
+        update_fields["status"] = "completed"
+    
+    await db.orders.update_one(
+        {"id": order_id, "restaurant_id": current_user.restaurant_id},
+        {"$set": update_fields}
+    )
+    return {"message": "Payment updated"}
+
+@api_router.get("/menu/{table_id}")
+async def get_menu_by_table(table_id: str):
+    table = await db.tables.find_one({"id": table_id}, {"_id": 0})
+    if not table:
+        raise HTTPException(status_code=404, detail="Table not found")
+    
+    restaurant = await db.restaurants.find_one({"id": table["restaurant_id"]}, {"_id": 0})
+    if not restaurant:
+        raise HTTPException(status_code=404, detail="Restaurant not found")
+    
+    categories = await db.menu_categories.find(
+        {"restaurant_id": table["restaurant_id"]}, {"_id": 0}
+    ).sort("order", 1).to_list(1000)
+    
+    items = await db.menu_items.find(
+        {"restaurant_id": table["restaurant_id"], "available": True}, {"_id": 0}
+    ).to_list(1000)
+    
+    return {
+        "restaurant": restaurant,
+        "table": table,
+        "categories": categories,
+        "items": items
+    }
+
+@api_router.post("/orders", response_model=Order)
+async def create_order(data: OrderCreate):
+    table = await db.tables.find_one({"id": data.table_id}, {"_id": 0})
+    if not table:
+        raise HTTPException(status_code=404, detail="Table not found")
+    
+    order = Order(
+        restaurant_id=table["restaurant_id"],
+        table_id=data.table_id,
+        table_number=table["table_number"],
+        items=data.items,
+        total_amount=sum(item.price * item.quantity for item in data.items),
+        payment_method=data.payment_method,
+        status="pending"
+    )
+    
+    doc = order.model_dump()
+    doc['created_at'] = doc['created_at'].isoformat()
+    doc['updated_at'] = doc['updated_at'].isoformat()
+    await db.orders.insert_one(doc)
+    
+    return order
+
 app.include_router(api_router)
 
 app.add_middleware(
@@ -77,7 +582,6 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Configure logging
 logging.basicConfig(
     level=logging.INFO,
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
