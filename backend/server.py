@@ -110,6 +110,7 @@ class MenuItem(BaseModel):
     price: float
     image_url: Optional[str] = None
     available: bool = True
+    preparation_time_minutes: int = 10
     created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
 
 class MenuItemCreate(BaseModel):
@@ -119,6 +120,7 @@ class MenuItemCreate(BaseModel):
     price: float
     image_url: Optional[str] = None
     available: bool = True
+    preparation_time_minutes: int = 10
 
 class OrderItem(BaseModel):
     menu_item_id: str
