@@ -24,6 +24,11 @@ const QRMenu = () => {
   const [checkoutDialog, setCheckoutDialog] = useState(false);
   const [paymentMethod, setPaymentMethod] = useState('cash');
   const [submitting, setSubmitting] = useState(false);
+  const [orderPlaced, setOrderPlaced] = useState(false);
+  const [placedOrder, setPlacedOrder] = useState(null);
+  const [reviewDialog, setReviewDialog] = useState(false);
+  const [rating, setRating] = useState(5);
+  const [reviewComment, setReviewComment] = useState('');
 
   useEffect(() => {
     fetchMenu();
