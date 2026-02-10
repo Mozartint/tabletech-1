@@ -202,7 +202,7 @@ const AdminDashboard = () => {
               Tüm Siparişler
             </TabsTrigger>
             <TabsTrigger value="reviews" className="gap-2" data-testid="reviews-tab">
-              <TrendingUp className="w-4 h-4" />
+              <Star className="w-4 h-4" />
               Değerlendirmeler
             </TabsTrigger>
           </TabsList>
