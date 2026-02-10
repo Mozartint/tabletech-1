@@ -6,8 +6,9 @@ import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '../components/ui/dialog';
 import { RadioGroup, RadioGroupItem } from '../components/ui/radio-group';
 import { Label } from '../components/ui/label';
+import { Textarea } from '../components/ui/textarea';
 import { toast } from 'sonner';
-import { ShoppingCart, Plus, Minus, UtensilsCrossed, X } from 'lucide-react';
+import { ShoppingCart, Plus, Minus, UtensilsCrossed, X, Clock, Star, Bell } from 'lucide-react';
 import { Badge } from '../components/ui/badge';
 
 const API = `${process.env.REACT_APP_BACKEND_URL}/api`;
