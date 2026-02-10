@@ -24,6 +24,22 @@ const KitchenDashboard = () => {
     return () => clearInterval(interval);
   }, []);
 
+  useEffect(() => {
+    if (orders.length > 0) {
+      const newOrders = orders.filter(o => o.status === 'pending');
+      if (newOrders.length > 0) {
+        const latestOrder = newOrders[0];
+        const orderTime = new Date(latestOrder.created_at).getTime();
+        const now = new Date().getTime();
+        if (now - orderTime < 10000) {
+          toast.success(`Yeni sipariş! Masa ${latestOrder.table_number}`, {
+            duration: 5000
+          });
+        }
+      }
+    }
+  }, [orders]);
+
   const fetchOrders = async () => {
     try {
       const token = localStorage.getItem('token');
