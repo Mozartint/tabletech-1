@@ -18,11 +18,12 @@ const API = `${process.env.REACT_APP_BACKEND_URL}/api`;
 
 const OwnerDashboard = () => {
   const navigate = useNavigate();
-  const [activeTab, setActiveTab] = useState('menu');
+  const [activeTab, setActiveTab] = useState('overview');
   const [categories, setCategories] = useState([]);
   const [menuItems, setMenuItems] = useState([]);
   const [tables, setTables] = useState([]);
   const [orders, setOrders] = useState([]);
+  const [stats, setStats] = useState(null);
   const [loading, setLoading] = useState(true);
   
   const [categoryDialog, setCategoryDialog] = useState(false);
