@@ -348,6 +348,126 @@ const QRMenu = () => {
           )}
         </DialogContent>
       </Dialog>
+
+      {/* Sipariş Başarılı Ekranı */}
+      {orderPlaced && placedOrder && (
+        <Dialog open={orderPlaced} onOpenChange={setOrderPlaced}>
+          <DialogContent className="max-w-md">
+            <div className="text-center space-y-6 py-4">
+              <div className="w-20 h-20 bg-green-100 rounded-full flex items-center justify-center mx-auto">
+                <svg className="w-12 h-12 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                </svg>
+              </div>
+              <div>
+                <h3 className="text-2xl font-bold text-gray-900 mb-2">Siparişiniz Alındı!</h3>
+                <p className="text-gray-600">Mutfağımız siparişinizi hazırlıyor.</p>
+              </div>
+              
+              <div className="bg-orange-50 border-2 border-orange-200 rounded-xl p-4">
+                <div className="flex items-center justify-center gap-2 text-orange-600 mb-2">
+                  <Clock className="w-5 h-5" />
+                  <span className="text-lg font-semibold">Tahmini Süre</span>
+                </div>
+                <p className="text-3xl font-bold text-orange-600">~{placedOrder.estimated_completion_minutes} dakika</p>
+                <p className="text-sm text-gray-600 mt-2">Siparişiniz hazırlanıyor</p>
+              </div>
+
+              <div className="space-y-2">
+                <p className="text-sm text-gray-600">Siparişiniz hazır olduğunda size bildirilecektir.</p>
+                <p className="text-xs text-gray-500">Sipariş No: {placedOrder.id.slice(0, 8).toUpperCase()}</p>
+              </div>
+
+              <div className="flex gap-3">
+                <Button
+                  onClick={() => setReviewDialog(true)}
+                  variant="outline"
+                  className="flex-1 gap-2"
+                >
+                  <Star className="w-4 h-4" />
+                  Değerlendir
+                </Button>
+                <Button
+                  onClick={handleCallWaiter}
+                  variant="outline"
+                  className="flex-1 gap-2"
+                >
+                  <Bell className="w-4 h-4" />
+                  Garson Çağır
+                </Button>
+              </div>
+
+              <Button
+                onClick={() => setOrderPlaced(false)}
+                className="w-full bg-orange-500 hover:bg-orange-600"
+              >
+                Tamam
+              </Button>
+            </div>
+          </DialogContent>
+        </Dialog>
+      )}
+
+      {/* Değerlendirme Dialog */}
+      <Dialog open={reviewDialog} onOpenChange={setReviewDialog}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Deneyiminizi Değerlendirin</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-6 mt-4">
+            <div>
+              <Label className="text-base mb-3 block">Puanınız</Label>
+              <div className="flex justify-center gap-2">
+                {[1, 2, 3, 4, 5].map((star) => (
+                  <button
+                    key={star}
+                    onClick={() => setRating(star)}
+                    className="focus:outline-none"
+                  >
+                    <Star
+                      className={`w-10 h-10 ${
+                        star <= rating ? 'fill-yellow-400 text-yellow-400' : 'text-gray-300'
+                      }`}
+                    />
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            <div>
+              <Label htmlFor="review-comment">Yorumunuz (Opsiyonel)</Label>
+              <Textarea
+                id="review-comment"
+                value={reviewComment}
+                onChange={(e) => setReviewComment(e.target.value)}
+                placeholder="Deneyiminizi bizimle paylaşın..."
+                rows={4}
+                className="mt-2"
+              />
+            </div>
+
+            <Button
+              onClick={handleSubmitReview}
+              className="w-full bg-orange-500 hover:bg-orange-600"
+            >
+              Gönder
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Garson Çağır Butonu (Sabit - Alt) */}
+      {!orderPlaced && (
+        <div className="fixed bottom-4 right-4 z-10">
+          <Button
+            onClick={handleCallWaiter}
+            className="h-14 w-14 rounded-full bg-blue-500 hover:bg-blue-600 shadow-lg"
+            data-testid="call-waiter-button"
+          >
+            <Bell className="w-6 h-6" />
+          </Button>
+        </div>
+      )}
     </div>
   );
 };
