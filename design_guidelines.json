@@ -1,0 +1,135 @@
+{
+  "identity": {
+    "persona": "E1",
+    "archetype": "Vibrant Swiss",
+    "core_philosophy": "Appetizing Efficiency. The UI should feel as fresh as the food (Customer) and as sharp as a chef's knife (Staff)."
+  },
+  "typography": {
+    "font_family": {
+      "headings": "Plus Jakarta Sans, sans-serif",
+      "body": "Inter, sans-serif",
+      "mono": "JetBrains Mono, monospace"
+    },
+    "scale": {
+      "h1": "text-4xl md:text-5xl font-bold tracking-tight",
+      "h2": "text-3xl font-semibold tracking-tight",
+      "h3": "text-2xl font-semibold",
+      "body_lg": "text-lg leading-relaxed",
+      "body_base": "text-base leading-relaxed",
+      "caption": "text-sm text-muted-foreground"
+    },
+    "usage_rules": {
+      "headings": "Use Plus Jakarta Sans for all page titles and major section headers. Keep tracking tight.",
+      "kitchen_display": "Use massive font sizes (text-3xl+) for Kitchen Ticket items for distance readability.",
+      "menu_price": "Use font-semibold and primary color for prices."
+    }
+  },
+  "colors": {
+    "palette": {
+      "primary": {
+        "DEFAULT": "#F97316",
+        "foreground": "#FFFFFF",
+        "hover": "#EA580C",
+        "light": "#FFF7ED"
+      },
+      "secondary": {
+        "DEFAULT": "#F1F5F9",
+        "foreground": "#0F172A"
+      },
+      "background": {
+        "dashboard": "#F8FAFC",
+        "card": "#FFFFFF",
+        "kitchen": "#1E293B"
+      },
+      "status": {
+        "success": "#22C55E",
+        "warning": "#F59E0B",
+        "error": "#EF4444",
+        "info": "#3B82F6"
+      }
+    },
+    "theme_strategy": {
+      "customer_menu": "Light Mode ONLY. Fresh, clean, appetizing. White backgrounds, orange accents.",
+      "kitchen_panel": "Dark Mode PREFERRED. Reduces glare in bright kitchens, high contrast for tickets.",
+      "admin_dashboard": "Light Mode. Clean, data-focused.",
+      "owner_dashboard": "Light Mode. Friendly, inviting."
+    }
+  },
+  "layout": {
+    "spacing_system": "Generous. Use p-6 or p-8 for cards. Gap-6 for grids.",
+    "grid_system": {
+      "dashboard": "grid-cols-1 md:grid-cols-12 gap-6. Sidebar is fixed w-64.",
+      "menu": "grid-cols-1 (mobile) to grid-cols-3 (desktop). Focus on vertical scroll.",
+      "kitchen": "grid-cols-1 md:grid-cols-3 lg:grid-cols-4 gap-4. Masonry-like ticket layout."
+    },
+    "containers": {
+      "main": "max-w-7xl mx-auto px-4 sm:px-6 lg:px-8",
+      "auth": "min-h-screen flex items-center justify-center bg-muted/30"
+    }
+  },
+  "components": {
+    "buttons": {
+      "primary": "bg-primary text-primary-foreground hover:bg-primary/90 shadow-sm rounded-full px-8",
+      "secondary": "bg-secondary text-secondary-foreground hover:bg-secondary/80 rounded-full px-6",
+      "menu_action": "h-12 w-12 rounded-full bg-primary text-white flex items-center justify-center shadow-lg active:scale-90 transition-transform"
+    },
+    "cards": {
+      "dashboard": "bg-card border border-border/50 shadow-sm rounded-xl p-6 hover:shadow-md transition-shadow",
+      "menu_item": "bg-card border-none shadow-md rounded-2xl overflow-hidden flex flex-col h-full",
+      "ticket": "bg-white dark:bg-slate-800 border-l-4 border-primary shadow-md rounded-r-lg p-4"
+    },
+    "inputs": {
+      "default": "h-11 rounded-lg border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+    }
+  },
+  "visual_enhancers": {
+    "shadows": {
+      "soft": "0 4px 20px -2px rgba(0, 0, 0, 0.05)",
+      "float": "0 10px 40px -10px rgba(249, 115, 22, 0.2)"
+    },
+    "borders": {
+      "subtle": "1px solid rgba(0,0,0,0.05)",
+      "active": "2px solid #F97316"
+    },
+    "radius": {
+      "default": "0.75rem",
+      "large": "1rem",
+      "pill": "9999px"
+    }
+  },
+  "media": {
+    "image_urls": {
+      "login_bg": "https://images.unsplash.com/photo-1762087577613-978bf9066d39?crop=entropy&cs=srgb&fm=jpg&q=85",
+      "menu_burger": "https://images.unsplash.com/photo-1630852009278-6cc36322ddfc?crop=entropy&cs=srgb&fm=jpg&q=85",
+      "menu_pizza": "https://images.unsplash.com/photo-1693609929769-169a70ebd994?crop=entropy&cs=srgb&fm=jpg&q=85",
+      "menu_drink": "https://images.unsplash.com/photo-1760085160682-001958f3a5f5?crop=entropy&cs=srgb&fm=jpg&q=85",
+      "placeholder_food": "https://images.unsplash.com/photo-1520075280578-af753d79a061?crop=entropy&cs=srgb&fm=jpg&q=85"
+    },
+    "icons": "Use Lucide React icons. Stroke width 1.5px for elegance, 2px for UI controls."
+  },
+  "motion": {
+    "transitions": "all 0.2s cubic-bezier(0.4, 0, 0.2, 1)",
+    "hover_effects": "hover:-translate-y-1 hover:shadow-lg",
+    "page_transition": "initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -20 }}"
+  },
+  "accessibility": {
+    "contrast": "Ensure text on orange buttons is White. Text on light orange backgrounds must be Dark Orange or Black.",
+    "touch_targets": "Minimum 44x44px for all mobile interactions (QR Menu).",
+    "kitchen_readability": "High contrast text for kitchen tickets (Black on White or White on Dark Slate)."
+  },
+  "instructions_to_main_agent": {
+    "general": "You are building a multi-tenant SaaS. Ensure strict separation of concerns between panels.",
+    "auth_flow": "Implement separate login flows for Admin, Owner, Kitchen, Cashier. QR Menu is public (no auth).",
+    "qr_menu": "This is the most critical visual part. Make it look like a high-end food delivery app (UberEats/DoorDash style). Big photos, clear prices, easy 'Add' buttons.",
+    "kitchen_view": "Function over form. It's a tool. Make it dense, high-contrast, and auto-refreshing.",
+    "mock_data": "Use the provided image URLs for mock menu items. Create a robust seeder for initial data."
+  },
+  "UNIVERSAL_GUIDELINES_FOR_MAIN_AGENT": [
+    "Do not use generic centered layouts.",
+    "Create depth through layered design elements.",
+    "Use glass-morphism effects with backdrop filters where appropriate (e.g., sticky menu headers).",
+    "Every interaction needs micro-animations.",
+    "Use 2-3x more spacing than feels comfortable.",
+    "All interactive elements MUST include data-testid attribute."
+  ]
+}
