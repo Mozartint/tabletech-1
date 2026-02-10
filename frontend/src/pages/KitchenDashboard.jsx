@@ -228,14 +228,14 @@ const KitchenDashboard = () => {
       {/* Yanıp Sönen Yeni Sipariş Bildirimi */}
       {newOrderAlert && (
         <div 
-          className=\"fixed inset-0 z-50 flex items-center justify-center bg-black/80 animate-pulse\"
-          data-testid=\"new-order-alert\"
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 animate-pulse"
+          data-testid="new-order-alert"
         >
-          <div className=\"bg-gradient-to-br from-orange-500 to-red-500 p-12 rounded-3xl shadow-2xl max-w-2xl w-full mx-4 animate-bounce\">
-            <div className=\"text-center space-y-6\">
-              <div className=\"text-8xl animate-ping\">🔔</div>
-              <h2 className=\"text-5xl font-bold text-white\">YENİ SİPARİŞ!</h2>
-              <div className=\"bg-white/20 backdrop-blur-sm p-6 rounded-2xl\">
+          <div className="bg-gradient-to-br from-orange-500 to-red-500 p-12 rounded-3xl shadow-2xl max-w-2xl w-full mx-4 animate-bounce">
+            <div className="text-center space-y-6">
+              <div className="text-8xl animate-ping">🔔</div>
+              <h2 className="text-5xl font-bold text-white">YENİ SİPARİŞ!</h2>
+              <div className="bg-white/20 backdrop-blur-sm p-6 rounded-2xl">
                 <p className=\"text-4xl font-bold text-white mb-4\">MASA {newOrderAlert.table_number}</p>
                 <div className=\"space-y-2 text-white text-xl\">
                   {newOrderAlert.items.map((item, idx) => (
