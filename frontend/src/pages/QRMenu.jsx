@@ -62,7 +62,8 @@ const QRMenu = () => {
         menu_item_id: item.id,
         name: item.name,
         price: item.price,
-        quantity: 1
+        quantity: 1,
+        preparation_time_minutes: item.preparation_time_minutes || 10
       }]);
     }
     toast.success(`${item.name} sepete eklendi`);
