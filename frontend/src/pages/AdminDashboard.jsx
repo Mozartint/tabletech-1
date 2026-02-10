@@ -48,10 +48,12 @@ const AdminDashboard = () => {
       const token = localStorage.getItem('token');
       
       if (activeTab === 'overview') {
-        const statsRes = await axios.get(`${API}/admin/stats`, {
-          headers: { Authorization: `Bearer ${token}` }
-        });
+        const [statsRes, analyticsRes] = await Promise.all([
+          axios.get(`${API}/admin/stats`, { headers: { Authorization: `Bearer ${token}` } }),
+          axios.get(`${API}/admin/analytics`, { headers: { Authorization: `Bearer ${token}` } })
+        ]);
         setStats(statsRes.data);
+        setAnalytics(analyticsRes.data);
       }
       
       const restaurantsRes = await axios.get(`${API}/admin/restaurants`, {
