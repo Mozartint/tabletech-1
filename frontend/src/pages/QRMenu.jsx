@@ -224,6 +224,10 @@ const QRMenu = () => {
                           <div className="flex-1">
                             <h3 className="font-semibold text-lg text-gray-900">{item.name}</h3>
                             <p className="text-sm text-gray-600 mt-1">{item.description}</p>
+                            <div className="flex items-center gap-1 mt-2 text-xs text-orange-600">
+                              <Clock className="w-3 h-3" />
+                              <span>~{item.preparation_time_minutes || 10} dakika</span>
+                            </div>
                           </div>
                         </div>
                         <div className="flex justify-between items-center mt-3">
