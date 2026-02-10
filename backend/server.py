@@ -346,6 +346,156 @@ async def get_restaurant_staff(restaurant_id: str, current_user: User = Depends(
     
     return staff
 
+@api_router.get("/admin/analytics")
+async def get_admin_analytics(current_user: User = Depends(get_current_user)):
+    if current_user.role != "admin":
+        raise HTTPException(status_code=403, detail="Admin only")
+    
+    # Son 7 günlük sipariş verileri
+    daily_orders = []
+    for i in range(6, -1, -1):
+        day_start = (datetime.now(timezone.utc) - timedelta(days=i)).replace(hour=0, minute=0, second=0, microsecond=0)
+        day_end = day_start + timedelta(days=1)
+        
+        count = await db.orders.count_documents({
+            "created_at": {"$gte": day_start.isoformat(), "$lt": day_end.isoformat()}
+        })
+        
+        orders = await db.orders.find(
+            {"created_at": {"$gte": day_start.isoformat(), "$lt": day_end.isoformat()}},
+            {"_id": 0, "total_amount": 1}
+        ).to_list(10000)
+        
+        revenue = sum(order.get("total_amount", 0) for order in orders)
+        
+        daily_orders.append({
+            "date": day_start.strftime("%d.%m"),
+            "orders": count,
+            "revenue": round(revenue, 2)
+        })
+    
+    # Restoran bazında istatistikler
+    restaurants = await db.restaurants.find({}, {"_id": 0}).to_list(1000)
+    restaurant_stats = []
+    
+    for restaurant in restaurants:
+        order_count = await db.orders.count_documents({"restaurant_id": restaurant["id"]})
+        orders = await db.orders.find(
+            {"restaurant_id": restaurant["id"]},
+            {"_id": 0, "total_amount": 1}
+        ).to_list(10000)
+        revenue = sum(order.get("total_amount", 0) for order in orders)
+        
+        restaurant_stats.append({
+            "name": restaurant["name"],
+            "orders": order_count,
+            "revenue": round(revenue, 2)
+        })
+    
+    restaurant_stats.sort(key=lambda x: x["orders"], reverse=True)
+    
+    return {
+        "daily_orders": daily_orders,
+        "restaurant_stats": restaurant_stats[:10]
+    }
+
+@api_router.get("/owner/stats")
+async def get_owner_stats(current_user: User = Depends(get_current_user)):
+    if current_user.role != "owner":
+        raise HTTPException(status_code=403, detail="Owner only")
+    
+    # Bugünkü istatistikler
+    today_start = datetime.now(timezone.utc).replace(hour=0, minute=0, second=0, microsecond=0)
+    today_orders = await db.orders.find(
+        {
+            "restaurant_id": current_user.restaurant_id,
+            "created_at": {"$gte": today_start.isoformat()}
+        },
+        {"_id": 0}
+    ).to_list(10000)
+    
+    today_count = len(today_orders)
+    today_revenue = sum(order.get("total_amount", 0) for order in today_orders)
+    
+    # Bu hafta
+    week_start = (datetime.now(timezone.utc) - timedelta(days=7)).replace(hour=0, minute=0, second=0, microsecond=0)
+    week_orders = await db.orders.find(
+        {
+            "restaurant_id": current_user.restaurant_id,
+            "created_at": {"$gte": week_start.isoformat()}
+        },
+        {"_id": 0}
+    ).to_list(10000)
+    
+    week_count = len(week_orders)
+    week_revenue = sum(order.get("total_amount", 0) for order in week_orders)
+    
+    # Sipariş durumu dağılımı
+    status_counts = {
+        "pending": 0,
+        "preparing": 0,
+        "ready": 0,
+        "completed": 0
+    }
+    
+    all_orders = await db.orders.find(
+        {"restaurant_id": current_user.restaurant_id},
+        {"_id": 0, "status": 1}
+    ).to_list(10000)
+    
+    for order in all_orders:
+        status = order.get("status", "pending")
+        if status in status_counts:
+            status_counts[status] += 1
+    
+    # Popüler ürünler
+    item_counts = {}
+    for order in all_orders:
+        for item in order.get("items", []):
+            name = item.get("name", "")
+            if name:
+                item_counts[name] = item_counts.get(name, 0) + item.get("quantity", 0)
+    
+    popular_items = sorted(item_counts.items(), key=lambda x: x[1], reverse=True)[:5]
+    popular_items = [{"name": name, "count": count} for name, count in popular_items]
+    
+    # Son 7 günlük trend
+    daily_stats = []
+    for i in range(6, -1, -1):
+        day_start = (datetime.now(timezone.utc) - timedelta(days=i)).replace(hour=0, minute=0, second=0, microsecond=0)
+        day_end = day_start + timedelta(days=1)
+        
+        day_orders = await db.orders.find(
+            {
+                "restaurant_id": current_user.restaurant_id,
+                "created_at": {"$gte": day_start.isoformat(), "$lt": day_end.isoformat()}
+            },
+            {"_id": 0, "total_amount": 1}
+        ).to_list(10000)
+        
+        count = len(day_orders)
+        revenue = sum(order.get("total_amount", 0) for order in day_orders)
+        
+        daily_stats.append({
+            "date": day_start.strftime("%d.%m"),
+            "orders": count,
+            "revenue": round(revenue, 2)
+        })
+    
+    return {
+        "today": {
+            "orders": today_count,
+            "revenue": round(today_revenue, 2)
+        },
+        "week": {
+            "orders": week_count,
+            "revenue": round(week_revenue, 2)
+        },
+        "status_distribution": status_counts,
+        "popular_items": popular_items,
+        "daily_stats": daily_stats
+    }
+
 @api_router.get("/owner/menu/categories", response_model=List[MenuCategory])
 async def get_categories(current_user: User = Depends(get_current_user)):
     if current_user.role != "owner":
