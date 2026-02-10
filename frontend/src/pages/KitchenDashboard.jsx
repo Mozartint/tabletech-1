@@ -47,16 +47,15 @@ const KitchenDashboard = () => {
   useEffect(() => {
     if (orders.length > 0) {
       const newOrders = orders.filter(o => o.status === 'pending');
-      if (newOrders.length > 0) {
-        const latestOrder = newOrders[0];
-        const orderTime = new Date(latestOrder.created_at).getTime();
-        const now = new Date().getTime();
-        if (now - orderTime < 10000) {
-          toast.success(`Yeni sipariş! Masa ${latestOrder.table_number}`, {
-            duration: 5000
-          });
-        }
+      
+      if (newOrders.length > lastOrderCount && lastOrderCount > 0) {
+        playNotificationSound();
+        toast.success(`Yeni sipariş! Masa ${newOrders[0].table_number}`, {
+          duration: 5000
+        });
       }
+      
+      setLastOrderCount(newOrders.length);
     }
   }, [orders]);
 
