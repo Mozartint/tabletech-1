@@ -752,7 +752,7 @@ async def update_order_payment(order_id: str, data: OrderPaymentUpdate, current_
     )
     return {"message": "Payment updated"}
 
-@api_router.get("/menu/{table_id}")
+@api_router.get("/public/menu/{table_id}")
 async def get_menu_by_table(table_id: str):
     table = await db.tables.find_one({"id": table_id}, {"_id": 0})
     if not table:
