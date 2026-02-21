@@ -929,3 +929,7 @@ logger = logging.getLogger(__name__)
 @app.on_event("shutdown")
 async def shutdown_db_client():
     client.close()
+# React Router için catch-all route
+@app.get("/{full_path:path}")
+async def catch_all(full_path: str):
+    return FileResponse("frontend/build/index.html")
