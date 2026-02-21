@@ -231,9 +231,25 @@ def generate_qr_code(data: str) -> str:
     return f"data:image/png;base64,{img_str}"
 
 @api_router.post("/auth/register", response_model=User)
-async def register(user_data: UserCreate, current_user: User = Depends(get_current_user)):
-    if current_user.role != "admin":
-        raise HTTPException(status_code=403, detail="Only admin can register users")
+async def register(user_data: UserCreate):
+    # Geçici olarak herkes kayıt olabilir
+    existing = await db.users.find_one({"email": user_data.email}, {"_id": 0})
+    if existing:
+        raise HTTPException(status_code=400, detail="Email already registered")
+    
+    user = User(
+        email=user_data.email,
+        full_name=user_data.full_name,
+        role=user_data.role,
+        restaurant_id=user_data.restaurant_id
+    )
+    
+    doc = user.model_dump()
+    doc['created_at'] = doc['created_at'].isoformat()
+    doc['password'] = hash_password(user_data.password)
+    
+    await db.users.insert_one(doc)
+    return user
     
     existing = await db.users.find_one({"email": user_data.email}, {"_id": 0})
     if existing:
