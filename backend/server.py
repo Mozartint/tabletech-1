@@ -689,8 +689,7 @@ async def create_table(data: TableCreate, current_user: User = Depends(get_curre
         qr_code=""
     )
     
-    frontend_url = os.environ.get('FRONTEND_URL', 'http://localhost:3000')
-    qr_data = f"{frontend_url}/menu/{table.id}"
+    qr_data = f"https://tabletech-1-production.up.railway.app/menu/{table.id}"
     table.qr_code = generate_qr_code(qr_data)
     
     doc = table.model_dump()
