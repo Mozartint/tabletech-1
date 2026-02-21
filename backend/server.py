@@ -891,7 +891,12 @@ async def resolve_waiter_call(call_id: str, current_user: User = Depends(get_cur
     return {"message": "Waiter call resolved"}
 
 app.include_router(api_router)
+# Static files (React build)
+app.mount("/", StaticFiles(directory="frontend/build", html=True), name="static")
 
+@app.get("/{full_path:path}")
+async def serve_react_app(full_path: str):
+    return FileResponse("frontend/build/index.html")
 app.add_middleware(
     CORSMiddleware,
     allow_credentials=True,
