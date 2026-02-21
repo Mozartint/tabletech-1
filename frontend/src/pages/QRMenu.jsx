@@ -36,7 +36,7 @@ const QRMenu = () => {
 
   const fetchMenu = async () => {
     try {
-      const response = await axios.get(`${API}/menu/${tableId}`);
+      const response = await axios.get(`${API}/public/menu/${tableId}`);
       setRestaurant(response.data.restaurant);
       setTable(response.data.table);
       setCategories(response.data.categories);
