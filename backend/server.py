@@ -1,11 +1,7 @@
 from fastapi import FastAPI, APIRouter, HTTPException, Depends, status
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
-from fastapi.staticfiles import StaticFiles  # BUNU EKLE
-from fastapi.responses import FileResponse  # BUNU EKLE
-from dotenv import load_dotenv
-# ... diğer import'lar aynı kalacak
-from fastapi import FastAPI, APIRouter, HTTPException, Depends, status
-from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
+from fastapi.staticfiles import StaticFiles
+from fastapi.responses import FileResponse
 from dotenv import load_dotenv
 from starlette.middleware.cors import CORSMiddleware
 from motor.motor_asyncio import AsyncIOMotorClient
@@ -27,7 +23,7 @@ load_dotenv(ROOT_DIR / '.env')
 
 mongo_url = "mongodb://mongo:HzHhAhTHTKbDpvKuSkVcgIOXXDjrIGdw@crossover.proxy.rlwy.net:18869"
 client = AsyncIOMotorClient(mongo_url)
-db = client[os.environ['DB_NAME']]
+db = client[os.environ.get('DB_NAME', 'railway')]
 
 app = FastAPI()
 api_router = APIRouter(prefix="/api")
@@ -232,25 +228,6 @@ def generate_qr_code(data: str) -> str:
 
 @api_router.post("/auth/register", response_model=User)
 async def register(user_data: UserCreate):
-    # Geçici olarak herkes kayıt olabilir
-    existing = await db.users.find_one({"email": user_data.email}, {"_id": 0})
-    if existing:
-        raise HTTPException(status_code=400, detail="Email already registered")
-    
-    user = User(
-        email=user_data.email,
-        full_name=user_data.full_name,
-        role=user_data.role,
-        restaurant_id=user_data.restaurant_id
-    )
-    
-    doc = user.model_dump()
-    doc['created_at'] = doc['created_at'].isoformat()
-    doc['password'] = hash_password(user_data.password)
-    
-    await db.users.insert_one(doc)
-    return user
-    
     existing = await db.users.find_one({"email": user_data.email}, {"_id": 0})
     if existing:
         raise HTTPException(status_code=400, detail="Email already registered")
@@ -404,7 +381,6 @@ async def get_admin_analytics(current_user: User = Depends(get_current_user)):
     if current_user.role != "admin":
         raise HTTPException(status_code=403, detail="Admin only")
     
-    # Son 7 günlük sipariş verileri
     daily_orders = []
     for i in range(6, -1, -1):
         day_start = (datetime.now(timezone.utc) - timedelta(days=i)).replace(hour=0, minute=0, second=0, microsecond=0)
@@ -427,7 +403,6 @@ async def get_admin_analytics(current_user: User = Depends(get_current_user)):
             "revenue": round(revenue, 2)
         })
     
-    # Restoran bazında istatistikler
     restaurants = await db.restaurants.find({}, {"_id": 0}).to_list(1000)
     restaurant_stats = []
     
@@ -457,7 +432,6 @@ async def get_owner_stats(current_user: User = Depends(get_current_user)):
     if current_user.role != "owner":
         raise HTTPException(status_code=403, detail="Owner only")
     
-    # Bugünkü istatistikler
     today_start = datetime.now(timezone.utc).replace(hour=0, minute=0, second=0, microsecond=0)
     today_orders = await db.orders.find(
         {
@@ -470,7 +444,6 @@ async def get_owner_stats(current_user: User = Depends(get_current_user)):
     today_count = len(today_orders)
     today_revenue = sum(order.get("total_amount", 0) for order in today_orders)
     
-    # Bu hafta
     week_start = (datetime.now(timezone.utc) - timedelta(days=7)).replace(hour=0, minute=0, second=0, microsecond=0)
     week_orders = await db.orders.find(
         {
@@ -483,7 +456,6 @@ async def get_owner_stats(current_user: User = Depends(get_current_user)):
     week_count = len(week_orders)
     week_revenue = sum(order.get("total_amount", 0) for order in week_orders)
     
-    # Sipariş durumu dağılımı
     status_counts = {
         "pending": 0,
         "preparing": 0,
@@ -501,7 +473,6 @@ async def get_owner_stats(current_user: User = Depends(get_current_user)):
         if status in status_counts:
             status_counts[status] += 1
     
-    # Popüler ürünler
     item_counts = {}
     for order in all_orders:
         for item in order.get("items", []):
@@ -512,7 +483,6 @@ async def get_owner_stats(current_user: User = Depends(get_current_user)):
     popular_items = sorted(item_counts.items(), key=lambda x: x[1], reverse=True)[:5]
     popular_items = [{"name": name, "count": count} for name, count in popular_items]
     
-    # Son 7 günlük trend
     daily_stats = []
     for i in range(6, -1, -1):
         day_start = (datetime.now(timezone.utc) - timedelta(days=i)).replace(hour=0, minute=0, second=0, microsecond=0)
@@ -905,13 +875,10 @@ async def resolve_waiter_call(call_id: str, current_user: User = Depends(get_cur
     )
     return {"message": "Waiter call resolved"}
 
+# ÖNCE API router'ı ekle
 app.include_router(api_router)
-# Static files (React build)
-app.mount("/", StaticFiles(directory="frontend/build", html=True), name="static")
 
-@app.get("/{full_path:path}")
-async def serve_react_app(full_path: str):
-    return FileResponse("frontend/build/index.html")
+# SONRA middleware ekle
 app.add_middleware(
     CORSMiddleware,
     allow_credentials=True,
@@ -919,6 +886,18 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+# EN SON static files ve catch-all route ekle
+# Static files - React build klasörü
+app.mount("/", StaticFiles(directory="frontend/build", html=True), name="static")
+
+# React Router için catch-all route (API dışındaki tüm route'lar için)
+@app.get("/{full_path:path}")
+async def serve_react_app(full_path: str):
+    # API route'larını hariç tut
+    if full_path.startswith("api/"):
+        raise HTTPException(status_code=404, detail="Not Found")
+    return FileResponse("frontend/build/index.html")
 
 logging.basicConfig(
     level=logging.INFO,
@@ -929,7 +908,3 @@ logger = logging.getLogger(__name__)
 @app.on_event("shutdown")
 async def shutdown_db_client():
     client.close()
-# React Router için catch-all route
-@app.get("/{full_path:path}")
-async def catch_all(full_path: str):
-    return FileResponse("frontend/build/index.html")
