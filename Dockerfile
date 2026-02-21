@@ -1,8 +1,14 @@
 FROM node:20-alpine AS frontend
 WORKDIR /app/frontend
-COPY frontend/package*.json ./
+
+# Önce sadece package.json kopyala ve kur
+COPY frontend/package.json ./
 RUN rm -rf node_modules package-lock.json && \
-    npm install --legacy-peer-deps
+    npm cache clean --force && \
+    npm install --legacy-peer-deps && \
+    npm install ajv@8.12.0 --save-dev --legacy-peer-deps
+
+# Sonra tüm frontend dosyalarını kopyala
 COPY frontend/ ./
 RUN npm run build
 
