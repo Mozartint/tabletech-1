@@ -139,6 +139,12 @@ class RestaurantCreate(BaseModel):
     owner_password: str
     owner_full_name: str
 
+    kasa_email: Optional[EmailStr] = None
+    kasa_password: Optional[str] = None
+
+    mutfak_email: Optional[EmailStr] = None
+    mutfak_password: Optional[str] = None
+
     # ✅ Admin restoran açarken seçebilecek
     kasa_enabled: bool = False
     mutfak_enabled: bool = False
