@@ -403,22 +403,6 @@ async def create_restaurant(data: RestaurantCreate, current_user: dict = Depends
 
     return restaurant
     
-    @api_router.get("/admin/restaurants/{restaurant_id}/staff")
-async def get_restaurant_staff(restaurant_id: str, current_user: dict = Depends(get_current_user)):
-
-    if current_user["role"] != "admin":
-        raise HTTPException(status_code=403, detail="Yetkisiz")
-
-    staff_cursor = db.users.find({"restaurant_id": restaurant_id})
-    staff = []
-
-    async for user in staff_cursor:
-        user["_id"] = str(user["_id"])
-        user.pop("password", None)
-        staff.append(user)
-
-    return staff
-    
 @api_router.get("/admin/users")
 async def list_users(current_user: User = Depends(get_current_user)):
     if current_user.role != "admin":
