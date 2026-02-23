@@ -28,12 +28,12 @@ const getTableIdFromUrl = () => {
  * ENV bazen Railway'de okunmadığı için fallback koyduk
  */
 const API_BASE =
-  import.meta.env.VITE_API_URL || "https://tabletech-1-production.up.railway.app";
+  process.env.REACT_APP_BACKEND_URL || "https://tabletech-1-production.up.railway.app";
 
 const API = `${API_BASE}/api`;
 
 const QRMenu = () => {
-  const [tableId, setTableId] = useState(null);
+  const { tableId } = useParams();
   const [restaurant, setRestaurant] = useState(null);
   const [table, setTable] = useState(null);
   const [categories, setCategories] = useState([]);
@@ -52,16 +52,9 @@ const QRMenu = () => {
   /**
    * Sayfa açılınca tableId'yi al
    */
-  useEffect(() => {
-    const id = getTableIdFromUrl();
+  
 
-    if (!id) {
-      toast.error("Masa ID bulunamadı");
-      return;
-    }
-
-    setTableId(id);
-  }, []);
+   
 
   /**
    * tableId geldikten sonra API çağır
