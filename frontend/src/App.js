@@ -1,4 +1,5 @@
 import { BrowserRouter, Routes, Route } from "react-router-dom";
+
 import Login from "./pages/Login";
 import AdminDashboard from "./pages/AdminDashboard";
 import CashierDashboard from "./pages/CashierDashboard";
