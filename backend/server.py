@@ -30,6 +30,14 @@ if not MONGO_URL:
 client = AsyncIOMotorClient(MONGO_URL)
 db = client[DB_NAME]
 
+@app.on_event("startup")
+async def startup_db_check():
+    try:
+        await db.command("ping")
+        print("✅ MongoDB Connected")
+    except Exception as e:
+        print("❌ MongoDB Connection Error:", e)
+        
 app = FastAPI()
 # React build klasörünü yayınla (frontend)
 FRONTEND_BUILD_PATH = ROOT_DIR / "frontend" / "build"
