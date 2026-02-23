@@ -21,10 +21,21 @@ import base64
 # 🔴 ÖNCE app oluşturulur
 app = FastAPI()
 
+@app.on_event("startup")
+async def startup_db_check():
+    try:
+        await db.command("ping")
+        print("✅ MongoDB Connected")
+    except Exception as e:
+        print("❌ MongoDB Connection Error:", e)
+        
 ROOT_DIR = Path(__file__).parent
-load_dotenv(ROOT_DIR / '.env')
+load_dotenv(ROOT_DIR / ".env")
 
-# 🔴 ENV'den Mongo al
+# FASTAPI ÖNCE TANIMLANIR
+app = FastAPI()
+
+# ENV'den Mongo al
 MONGO_URL = os.environ.get("MONGO_URL")
 DB_NAME = os.environ.get("DB_NAME", "railway")
 
