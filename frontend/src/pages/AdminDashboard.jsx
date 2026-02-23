@@ -26,8 +26,9 @@ const AdminDashboard = () => {
   const [staffDialog, setStaffDialog] = useState(false);
   const [selectedRestaurant, setSelectedRestaurant] = useState(null);
   const [staff, setStaff] = useState([]);
+  const [submitting, setSubmitting] = useState(false);
   
-  // Güncellenmiş form state'i - kasa ve mutfak bilgileri eklendi
+  // Form state
   const [formData, setFormData] = useState({
     name: '',
     address: '',
@@ -35,11 +36,9 @@ const AdminDashboard = () => {
     owner_email: '',
     owner_password: '',
     owner_full_name: '',
-    // Kasa bilgileri
     kasa_enabled: false,
     kasa_email: '',
     kasa_password: '',
-    // Mutfak bilgileri
     mutfak_enabled: false,
     mutfak_email: '',
     mutfak_password: ''
@@ -95,25 +94,61 @@ const AdminDashboard = () => {
 
   const handleCreateRestaurant = async (e) => {
     e.preventDefault();
+    e.stopPropagation(); // Event bubbling'i durdur
+    
+    console.log('Form submit edildi', formData); // Debug için
+    
+    // Validasyon
+    if (!formData.name || !formData.address || !formData.phone || 
+        !formData.owner_full_name || !formData.owner_email || !formData.owner_password) {
+      toast.error('Lütfen tüm zorunlu alanları doldurun');
+      return;
+    }
+
+    if (formData.kasa_enabled && (!formData.kasa_email || !formData.kasa_password)) {
+      toast.error('Kasa kullanıcısı için email ve şifre girin');
+      return;
+    }
+
+    if (formData.mutfak_enabled && (!formData.mutfak_email || !formData.mutfak_password)) {
+      toast.error('Mutfak kullanıcısı için email ve şifre girin');
+      return;
+    }
+
+    setSubmitting(true);
+    
     try {
       const token = localStorage.getItem('token');
       
-      // Backend'e gönderilecek veriyi hazırla
-      // Eğer kasa/mutfak seçili değilse null gönder
       const payload = {
-        ...formData,
+        name: formData.name,
+        address: formData.address,
+        phone: formData.phone,
+        owner_email: formData.owner_email,
+        owner_password: formData.owner_password,
+        owner_full_name: formData.owner_full_name,
         kasa_email: formData.kasa_enabled ? formData.kasa_email : null,
         kasa_password: formData.kasa_enabled ? formData.kasa_password : null,
         mutfak_email: formData.mutfak_enabled ? formData.mutfak_email : null,
         mutfak_password: formData.mutfak_enabled ? formData.mutfak_password : null,
+        kasa_enabled: formData.kasa_enabled,
+        mutfak_enabled: formData.mutfak_enabled
       };
 
-      await axios.post(`${API}/admin/restaurants`, payload, {
-        headers: { Authorization: `Bearer ${token}` }
+      console.log('Gönderilen payload:', payload); // Debug için
+
+      const response = await axios.post(`${API}/admin/restaurants`, payload, {
+        headers: { 
+          Authorization: `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        }
       });
+      
+      console.log('Sunucu yanıtı:', response.data); // Debug için
       
       toast.success('Restoran ve kullanıcılar başarıyla oluşturuldu');
       setDialogOpen(false);
+      
       // Formu sıfırla
       setFormData({
         name: '',
@@ -129,10 +164,21 @@ const AdminDashboard = () => {
         mutfak_email: '',
         mutfak_password: ''
       });
+      
       fetchData();
     } catch (error) {
-      toast.error('Restoran oluşturulamadı');
-      console.error(error);
+      console.error('Hata detayı:', error);
+      console.error('Hata response:', error.response);
+      
+      if (error.response?.data?.detail) {
+        toast.error('Hata: ' + error.response.data.detail);
+      } else if (error.message) {
+        toast.error('Hata: ' + error.message);
+      } else {
+        toast.error('Restoran oluşturulamadı');
+      }
+    } finally {
+      setSubmitting(false);
     }
   };
 
@@ -374,7 +420,11 @@ const AdminDashboard = () => {
               <h2 className="text-xl font-semibold">Tüm Restoranlar</h2>
               <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
                 <DialogTrigger asChild>
-                  <Button className="bg-orange-500 hover:bg-orange-600 rounded-full gap-2" data-testid="create-restaurant-button">
+                  <Button 
+                    className="bg-orange-500 hover:bg-orange-600 rounded-full gap-2" 
+                    data-testid="create-restaurant-button"
+                    type="button"
+                  >
                     <Plus className="w-4 h-4" />
                     Yeni Restoran
                   </Button>
@@ -383,182 +433,217 @@ const AdminDashboard = () => {
                   <DialogHeader>
                     <DialogTitle>Yeni Restoran Ekle</DialogTitle>
                   </DialogHeader>
-                  <form onSubmit={handleCreateRestaurant} className="space-y-6 mt-4">
-                    {/* Restoran Bilgileri */}
-                    <div className="space-y-4">
-                      <h3 className="text-sm font-semibold text-orange-600 uppercase tracking-wide flex items-center gap-2">
-                        <Store className="w-4 h-4" />
-                        Restoran Bilgileri
-                      </h3>
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <div>
-                          <Label htmlFor="name">Restoran Adı</Label>
-                          <Input
-                            id="name"
-                            value={formData.name}
-                            onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                            required
-                            data-testid="restaurant-name-input"
-                          />
-                        </div>
-                        <div>
-                          <Label htmlFor="phone">Telefon</Label>
-                          <Input
-                            id="phone"
-                            value={formData.phone}
-                            onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
-                            required
-                          />
-                        </div>
-                      </div>
-                      <div>
-                        <Label htmlFor="address">Adres</Label>
-                        <Input
-                          id="address"
-                          value={formData.address}
-                          onChange={(e) => setFormData({ ...formData, address: e.target.value })}
-                          required
-                        />
-                      </div>
-                    </div>
-
-                    {/* Owner Bilgileri */}
-                    <div className="space-y-4 pt-4 border-t">
-                      <h3 className="text-sm font-semibold text-purple-600 uppercase tracking-wide flex items-center gap-2">
-                        <UserCheck className="w-4 h-4" />
-                        Restoran Sahibi (Owner)
-                      </h3>
-                      <div>
-                        <Label htmlFor="owner_full_name">Ad Soyad</Label>
-                        <Input
-                          id="owner_full_name"
-                          value={formData.owner_full_name}
-                          onChange={(e) => setFormData({ ...formData, owner_full_name: e.target.value })}
-                          required
-                        />
-                      </div>
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <div>
-                          <Label htmlFor="owner_email">E-posta</Label>
-                          <Input
-                            id="owner_email"
-                            type="email"
-                            value={formData.owner_email}
-                            onChange={(e) => setFormData({ ...formData, owner_email: e.target.value })}
-                            required
-                          />
-                        </div>
-                        <div>
-                          <Label htmlFor="owner_password">Şifre</Label>
-                          <Input
-                            id="owner_password"
-                            type="password"
-                            value={formData.owner_password}
-                            onChange={(e) => setFormData({ ...formData, owner_password: e.target.value })}
-                            required
-                          />
-                        </div>
-                      </div>
-                    </div>
-
-                    {/* Kasa Bilgileri */}
-                    <div className="space-y-4 pt-4 border-t">
-                      <div className="flex items-center justify-between">
-                        <h3 className="text-sm font-semibold text-green-600 uppercase tracking-wide flex items-center gap-2">
-                          <CreditCard className="w-4 h-4" />
-                          Kasa Kullanıcısı
-                        </h3>
-                        <label className="flex items-center cursor-pointer">
-                          <input
-                            type="checkbox"
-                            className="sr-only peer"
-                            checked={formData.kasa_enabled}
-                            onChange={(e) => setFormData({ ...formData, kasa_enabled: e.target.checked })}
-                          />
-                          <div className="relative w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-green-300 rounded-full peer peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-green-600"></div>
-                          <span className="ms-3 text-sm font-medium text-gray-700">
-                            {formData.kasa_enabled ? 'Aktif' : 'Pasif'}
-                          </span>
-                        </label>
-                      </div>
-                      
-                      {formData.kasa_enabled && (
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 animate-in fade-in slide-in-from-top-2 duration-200">
-                          <div>
-                            <Label htmlFor="kasa_email">Kasa E-posta</Label>
-                            <Input
-                              id="kasa_email"
-                              type="email"
-                              value={formData.kasa_email}
-                              onChange={(e) => setFormData({ ...formData, kasa_email: e.target.value })}
-                              required={formData.kasa_enabled}
-                            />
-                          </div>
-                          <div>
-                            <Label htmlFor="kasa_password">Kasa Şifre</Label>
-                            <Input
-                              id="kasa_password"
-                              type="password"
-                              value={formData.kasa_password}
-                              onChange={(e) => setFormData({ ...formData, kasa_password: e.target.value })}
-                              required={formData.kasa_enabled}
-                            />
-                          </div>
-                        </div>
-                      )}
-                    </div>
-
-                    {/* Mutfak Bilgileri */}
-                    <div className="space-y-4 pt-4 border-t">
-                      <div className="flex items-center justify-between">
+                  
+                  {/* Form dışarıda, DialogContent içinde ama DialogTrigger dışında */}
+                  <div className="mt-4">
+                    <form 
+                      id="restaurant-form"
+                      onSubmit={handleCreateRestaurant} 
+                      className="space-y-6"
+                    >
+                      {/* Restoran Bilgileri */}
+                      <div className="space-y-4">
                         <h3 className="text-sm font-semibold text-orange-600 uppercase tracking-wide flex items-center gap-2">
-                          <ChefHat className="w-4 h-4" />
-                          Mutfak Kullanıcısı
+                          <Store className="w-4 h-4" />
+                          Restoran Bilgileri
                         </h3>
-                        <label className="flex items-center cursor-pointer">
-                          <input
-                            type="checkbox"
-                            className="sr-only peer"
-                            checked={formData.mutfak_enabled}
-                            onChange={(e) => setFormData({ ...formData, mutfak_enabled: e.target.checked })}
-                          />
-                          <div className="relative w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-orange-300 rounded-full peer peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-orange-600"></div>
-                          <span className="ms-3 text-sm font-medium text-gray-700">
-                            {formData.mutfak_enabled ? 'Aktif' : 'Pasif'}
-                          </span>
-                        </label>
-                      </div>
-                      
-                      {formData.mutfak_enabled && (
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 animate-in fade-in slide-in-from-top-2 duration-200">
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                           <div>
-                            <Label htmlFor="mutfak_email">Mutfak E-posta</Label>
+                            <Label htmlFor="name">Restoran Adı *</Label>
                             <Input
-                              id="mutfak_email"
-                              type="email"
-                              value={formData.mutfak_email}
-                              onChange={(e) => setFormData({ ...formData, mutfak_email: e.target.value })}
-                              required={formData.mutfak_enabled}
+                              id="name"
+                              name="name"
+                              value={formData.name}
+                              onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                              required
+                              data-testid="restaurant-name-input"
+                              placeholder="Örn: Baydöner"
                             />
                           </div>
                           <div>
-                            <Label htmlFor="mutfak_password">Mutfak Şifre</Label>
+                            <Label htmlFor="phone">Telefon *</Label>
                             <Input
-                              id="mutfak_password"
-                              type="password"
-                              value={formData.mutfak_password}
-                              onChange={(e) => setFormData({ ...formData, mutfak_password: e.target.value })}
-                              required={formData.mutfak_enabled}
+                              id="phone"
+                              name="phone"
+                              value={formData.phone}
+                              onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
+                              required
+                              placeholder="0555 123 4567"
                             />
                           </div>
                         </div>
-                      )}
-                    </div>
+                        <div>
+                          <Label htmlFor="address">Adres *</Label>
+                          <Input
+                            id="address"
+                            name="address"
+                            value={formData.address}
+                            onChange={(e) => setFormData({ ...formData, address: e.target.value })}
+                            required
+                            placeholder="Restoran adresi"
+                          />
+                        </div>
+                      </div>
 
-                    <Button type="submit" className="w-full bg-orange-500 hover:bg-orange-600" data-testid="submit-restaurant-button">
-                      Restoran ve Kullanıcıları Oluştur
-                    </Button>
-                  </form>
+                      {/* Owner Bilgileri */}
+                      <div className="space-y-4 pt-4 border-t">
+                        <h3 className="text-sm font-semibold text-purple-600 uppercase tracking-wide flex items-center gap-2">
+                          <UserCheck className="w-4 h-4" />
+                          Restoran Sahibi (Owner) *
+                        </h3>
+                        <div>
+                          <Label htmlFor="owner_full_name">Ad Soyad *</Label>
+                          <Input
+                            id="owner_full_name"
+                            name="owner_full_name"
+                            value={formData.owner_full_name}
+                            onChange={(e) => setFormData({ ...formData, owner_full_name: e.target.value })}
+                            required
+                            placeholder="Ahmet Yılmaz"
+                          />
+                        </div>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                          <div>
+                            <Label htmlFor="owner_email">E-posta *</Label>
+                            <Input
+                              id="owner_email"
+                              name="owner_email"
+                              type="email"
+                              value={formData.owner_email}
+                              onChange={(e) => setFormData({ ...formData, owner_email: e.target.value })}
+                              required
+                              placeholder="owner@restoran.com"
+                            />
+                          </div>
+                          <div>
+                            <Label htmlFor="owner_password">Şifre *</Label>
+                            <Input
+                              id="owner_password"
+                              name="owner_password"
+                              type="password"
+                              value={formData.owner_password}
+                              onChange={(e) => setFormData({ ...formData, owner_password: e.target.value })}
+                              required
+                              placeholder="******"
+                            />
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Kasa Bilgileri */}
+                      <div className="space-y-4 pt-4 border-t">
+                        <div className="flex items-center justify-between">
+                          <h3 className="text-sm font-semibold text-green-600 uppercase tracking-wide flex items-center gap-2">
+                            <CreditCard className="w-4 h-4" />
+                            Kasa Kullanıcısı (Opsiyonel)
+                          </h3>
+                          <div className="flex items-center gap-2">
+                            <input
+                              type="checkbox"
+                              id="kasa_enabled"
+                              checked={formData.kasa_enabled}
+                              onChange={(e) => setFormData({ ...formData, kasa_enabled: e.target.checked })}
+                              className="w-4 h-4 text-green-600 rounded border-gray-300 focus:ring-green-500"
+                            />
+                            <Label htmlFor="kasa_enabled" className="text-sm cursor-pointer">
+                              Ekle
+                            </Label>
+                          </div>
+                        </div>
+                        
+                        {formData.kasa_enabled && (
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 p-4 bg-green-50 rounded-lg">
+                            <div>
+                              <Label htmlFor="kasa_email">Kasa E-posta *</Label>
+                              <Input
+                                id="kasa_email"
+                                name="kasa_email"
+                                type="email"
+                                value={formData.kasa_email}
+                                onChange={(e) => setFormData({ ...formData, kasa_email: e.target.value })}
+                                required={formData.kasa_enabled}
+                                placeholder="kasa@restoran.com"
+                              />
+                            </div>
+                            <div>
+                              <Label htmlFor="kasa_password">Kasa Şifre *</Label>
+                              <Input
+                                id="kasa_password"
+                                name="kasa_password"
+                                type="password"
+                                value={formData.kasa_password}
+                                onChange={(e) => setFormData({ ...formData, kasa_password: e.target.value })}
+                                required={formData.kasa_enabled}
+                                placeholder="******"
+                              />
+                            </div>
+                          </div>
+                        )}
+                      </div>
+
+                      {/* Mutfak Bilgileri */}
+                      <div className="space-y-4 pt-4 border-t">
+                        <div className="flex items-center justify-between">
+                          <h3 className="text-sm font-semibold text-orange-600 uppercase tracking-wide flex items-center gap-2">
+                            <ChefHat className="w-4 h-4" />
+                            Mutfak Kullanıcısı (Opsiyonel)
+                          </h3>
+                          <div className="flex items-center gap-2">
+                            <input
+                              type="checkbox"
+                              id="mutfak_enabled"
+                              checked={formData.mutfak_enabled}
+                              onChange={(e) => setFormData({ ...formData, mutfak_enabled: e.target.checked })}
+                              className="w-4 h-4 text-orange-600 rounded border-gray-300 focus:ring-orange-500"
+                            />
+                            <Label htmlFor="mutfak_enabled" className="text-sm cursor-pointer">
+                              Ekle
+                            </Label>
+                          </div>
+                        </div>
+                        
+                        {formData.mutfak_enabled && (
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 p-4 bg-orange-50 rounded-lg">
+                            <div>
+                              <Label htmlFor="mutfak_email">Mutfak E-posta *</Label>
+                              <Input
+                                id="mutfak_email"
+                                name="mutfak_email"
+                                type="email"
+                                value={formData.mutfak_email}
+                                onChange={(e) => setFormData({ ...formData, mutfak_email: e.target.value })}
+                                required={formData.mutfak_enabled}
+                                placeholder="mutfak@restoran.com"
+                              />
+                            </div>
+                            <div>
+                              <Label htmlFor="mutfak_password">Mutfak Şifre *</Label>
+                              <Input
+                                id="mutfak_password"
+                                name="mutfak_password"
+                                type="password"
+                                value={formData.mutfak_password}
+                                onChange={(e) => setFormData({ ...formData, mutfak_password: e.target.value })}
+                                required={formData.mutfak_enabled}
+                                placeholder="******"
+                              />
+                            </div>
+                          </div>
+                        )}
+                      </div>
+
+                      <div className="pt-4">
+                        <Button 
+                          type="submit" 
+                          className="w-full bg-orange-500 hover:bg-orange-600 h-12 text-lg"
+                          disabled={submitting}
+                          data-testid="submit-restaurant-button"
+                        >
+                          {submitting ? 'Oluşturuluyor...' : 'Restoran ve Kullanıcıları Oluştur'}
+                        </Button>
+                      </div>
+                    </form>
+                  </div>
                 </DialogContent>
               </Dialog>
             </div>
