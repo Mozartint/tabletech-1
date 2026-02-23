@@ -21,9 +21,14 @@ import base64
 ROOT_DIR = Path(__file__).parent
 load_dotenv(ROOT_DIR / '.env')
 
-mongo_url = "mongodb://mongo:HzHhAhTHTKbDpvKuSkVcgIOXXDjrIGdw@crossover.proxy.rlwy.net:18869"
-client = AsyncIOMotorClient(mongo_url)
-db = client[os.environ.get('DB_NAME', 'railway')]
+MONGO_URL = os.environ.get("MONGO_URL")
+DB_NAME = os.environ.get("DB_NAME", "railway")
+
+if not MONGO_URL:
+    raise Exception("MONGO_URL environment variable not set!")
+
+client = AsyncIOMotorClient(MONGO_URL)
+db = client[DB_NAME]
 
 app = FastAPI()
 # React build klasörünü yayınla (frontend)
