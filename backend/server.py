@@ -17,22 +17,21 @@ from jose import JWTError, jwt
 import qrcode
 import io
 import base64
-    
-@app.on_event("startup")
-async def startup_db_check():
-    try:
-        await db.command("ping")
-        print("✅ MongoDB Connected")
-    except Exception as e:
-        print("❌ MongoDB Connection Error:", e)
-        
+
+# -------------------------
+# ENV yükle
+# -------------------------
 ROOT_DIR = Path(__file__).parent
 load_dotenv(ROOT_DIR / ".env")
 
-# FASTAPI ÖNCE TANIMLANIR
+# -------------------------
+# FASTAPI'yi ÖNCE oluştur
+# -------------------------
 app = FastAPI()
 
-# ENV'den Mongo al
+# -------------------------
+# Mongo bağlantısını ENV'den al
+# -------------------------
 MONGO_URL = os.environ.get("MONGO_URL")
 DB_NAME = os.environ.get("DB_NAME", "railway")
 
@@ -42,23 +41,35 @@ if not MONGO_URL:
 client = AsyncIOMotorClient(MONGO_URL)
 db = client[DB_NAME]
 
+# -------------------------
+# Mongo bağlantı testi
+# -------------------------
+@app.on_event("startup")
+async def startup_db_check():
+    try:
+        await db.command("ping")
+        print("✅ MongoDB Connected")
+    except Exception as e:
+        print("❌ MongoDB Connection Error:", e)
+
+# -------------------------
+# DEBUG endpoint (admin panel sorunu için)
+# -------------------------
 @app.get("/debug-users")
 async def debug_users():
-    try:
-        users_cursor = db.users.find()
-        users = []
+    users_cursor = db.users.find()
+    users = []
 
-        async for user in users_cursor:
-            # Mongo ObjectId sorununu temizle
-            if "_id" in user:
-                user["_id"] = str(user["_id"])
-            users.append(user)
+    async for user in users_cursor:
+        if "_id" in user:
+            user["_id"] = str(user["_id"])
+        users.append(user)
 
-        return {
-            "status": "ok",
-            "count": len(users),
-            "users": users
-        }
+    return {
+        "status": "ok",
+        "count": len(users),
+        "users": users
+    }
 
     except Exception as e:
         return {
