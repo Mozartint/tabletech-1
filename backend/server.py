@@ -417,6 +417,22 @@ async def list_users(current_user: User = Depends(get_current_user)):
 
     return users
     
+    @api_router.get("/admin/restaurants")
+async def get_all_restaurants(current_user: dict = Depends(get_current_user)):
+
+    # Sadece süper admin görebilir
+    if current_user["role"] != "admin":
+        raise HTTPException(status_code=403, detail="Admin only")
+
+    restaurants = []
+    cursor = db.restaurants.find({})
+
+    async for r in cursor:
+        r["_id"] = str(r["_id"])  # Mongo ObjectId fix
+        restaurants.append(r)
+
+    return restaurants
+    
 @api_router.delete("/admin/restaurants/{restaurant_id}")
 async def delete_restaurant(restaurant_id: str, current_user: User = Depends(get_current_user)):
     if current_user.role != "admin":
