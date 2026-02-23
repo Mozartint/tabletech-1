@@ -18,11 +18,6 @@ import qrcode
 import io
 import base64
 
-# 🔴 ÖNCE app oluşturulur
-app = FastAPI()
-
-@app.get("/api/admin/restaurants")
-async def get_all_restaurants(current_user: dict = Depends(get_current_user)):
     if current_user["role"] != "admin":
         raise HTTPException(status_code=403, detail="Admin only")
 
