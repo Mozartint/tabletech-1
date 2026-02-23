@@ -21,6 +21,14 @@ import base64
 # 🔴 ÖNCE app oluşturulur
 app = FastAPI()
 
+@app.get("/api/admin/restaurants")
+async def get_all_restaurants(current_user: dict = Depends(get_current_user)):
+    if current_user["role"] != "admin":
+        raise HTTPException(status_code=403, detail="Admin only")
+
+    restaurants = list(db.restaurants.find({}, {"_id": 0}))
+    return restaurants
+    
 @app.on_event("startup")
 async def startup_db_check():
     try:
