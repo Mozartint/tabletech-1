@@ -85,9 +85,6 @@ async def debug_env():
         "DB_NAME": os.environ.get("DB_NAME")
     }
 
-# React build klasörünü yayınla (frontend)
-FRONTEND_BUILD_PATH = ROOT_DIR / "frontend" / "build"
-
 # API Router oluştur (ÖNCE)
 api_router = APIRouter(prefix="/api")
 
@@ -143,12 +140,12 @@ class RestaurantCreate(BaseModel):
     owner_email: EmailStr
     owner_password: str
     owner_full_name: str
-    kasa_email: Optional[EmailStr] = None
-    kasa_password: Optional[str] = None
-    mutfak_email: Optional[EmailStr] = None
-    mutfak_password: Optional[str] = None
-    kasa_enabled: bool = False
-    mutfak_enabled: bool = False
+    kasa_email: Optional[EmailStr] = Field(default=None)
+    kasa_password: Optional[str] = Field(default=None)
+    mutfak_email: Optional[EmailStr] = Field(default=None)
+    mutfak_password: Optional[str] = Field(default=None)
+    kasa_enabled: bool = Field(default=False)
+    mutfak_enabled: bool = Field(default=False)
 
 class Table(BaseModel):
     model_config = ConfigDict(extra="ignore")
@@ -334,15 +331,10 @@ async def login(credentials: UserLogin):
 
 @api_router.post("/admin/restaurants")
 async def create_restaurant(data: RestaurantCreate, current_user: User = Depends(get_current_user)):
-    """
-    Yeni restoran oluşturur. Opsiyonel olarak kasa ve mutfak kullanıcıları da oluşturur.
-    """
     try:
-        # Loglama
         print(f"[CREATE RESTAURANT] İstek geldi - User: {current_user.email}, Role: {current_user.role}")
         print(f"[CREATE RESTAURANT] Gelen data: {data.model_dump()}")
         
-        # Yetki kontrolü - User modeli artık dict gibi erişilebilir (model_config = ConfigDict(extra="ignore"))
         if current_user.role != "admin":
             print(f"[CREATE RESTAURANT] Yetkisiz erişim: {current_user.role}")
             raise HTTPException(status_code=403, detail="Yetkisiz - Sadece admin yapabilir")
@@ -350,7 +342,6 @@ async def create_restaurant(data: RestaurantCreate, current_user: User = Depends
         restaurant_id = str(uuid.uuid4())
         print(f"[CREATE RESTAURANT] Yeni restoran ID: {restaurant_id}")
 
-        # OWNER oluştur
         owner_user = {
             "id": str(uuid.uuid4()),
             "email": data.owner_email,
@@ -363,7 +354,6 @@ async def create_restaurant(data: RestaurantCreate, current_user: User = Depends
         await db.users.insert_one(owner_user)
         print(f"[CREATE RESTAURANT] Owner oluşturuldu: {owner_user['email']}")
 
-        # KASA oluştur (opsiyonel)
         if data.kasa_email and data.kasa_password:
             kasa_user = {
                 "id": str(uuid.uuid4()),
@@ -377,7 +367,6 @@ async def create_restaurant(data: RestaurantCreate, current_user: User = Depends
             await db.users.insert_one(kasa_user)
             print(f"[CREATE RESTAURANT] Kasa oluşturuldu: {kasa_user['email']}")
 
-        # MUTFAK oluştur (opsiyonel)
         if data.mutfak_email and data.mutfak_password:
             mutfak_user = {
                 "id": str(uuid.uuid4()),
@@ -391,7 +380,6 @@ async def create_restaurant(data: RestaurantCreate, current_user: User = Depends
             await db.users.insert_one(mutfak_user)
             print(f"[CREATE RESTAURANT] Mutfak oluşturuldu: {mutfak_user['email']}")
 
-        # Restoran oluştur
         restaurant = {
             "id": restaurant_id,
             "name": data.name,
@@ -411,14 +399,11 @@ async def create_restaurant(data: RestaurantCreate, current_user: User = Depends
         return restaurant
         
     except HTTPException as he:
-        # HTTP exception'ları olduğu gibi fırlat
         print(f"[CREATE RESTAURANT] HTTP Hatası: {he.detail}")
         raise he
     except Exception as e:
-        # Diğer tüm hataları yakala ve logla
         error_msg = f"Sunucu hatası: {str(e)}"
         print(f"[CREATE RESTAURANT] KRİTİK HATA: {error_msg}")
-        print(f"[CREATE RESTAURANT] Traceback:")
         traceback.print_exc()
         raise HTTPException(status_code=500, detail=error_msg)
 
@@ -1040,7 +1025,7 @@ app.include_router(api_router)
 frontend_path = Path("frontend/build")
 
 # -----------------------------
-# STATIC DOSYALAR (JS, CSS vs.)
+# STATIC DOSYALAR (JS, CSS vs.) - ÖNCE BUNLARI EKLE
 # -----------------------------
 if (frontend_path / "static").exists():
     app.mount(
@@ -1061,13 +1046,19 @@ async def serve_root():
 
 # -----------------------------
 # REACT ROUTER DESTEK (CATCH-ALL)
+# /login, /admin, /owner vb. tüm route'lar için
 # -----------------------------
 @app.get("/{full_path:path}")
 async def serve_react_app(full_path: str):
-    # API endpointlerine dokunma!
+    # API endpointlerine dokunma
     if full_path.startswith("api/"):
-        raise HTTPException(status_code=404, detail="API route")
+        raise HTTPException(status_code=404, detail="API route not found")
+    
+    # Static dosyalara dokunma  
+    if full_path.startswith("static/"):
+        raise HTTPException(status_code=404, detail="Static file not found")
 
+    # Tüm diğer route'ları React'e yönlendir
     index_file = frontend_path / "index.html"
     if index_file.exists():
         return FileResponse(index_file)
