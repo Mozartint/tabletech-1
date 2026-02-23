@@ -9,18 +9,30 @@ import { Textarea } from '../components/ui/textarea';
 import { toast } from 'sonner';
 import { ShoppingCart, Plus, Minus, UtensilsCrossed, X, Clock, Star, Bell } from 'lucide-react';
 import { Badge } from '../components/ui/badge';
+
+/**
+ * URL'den masa ID'sini güvenli alır
+ * /menu/uuid
+ * /menu/uuid/
+ * ikisini de destekler
+ */
 const getTableIdFromUrl = () => {
-  const path = window.location.pathname;
-  const parts = path.split("/");
+  const parts = window.location.pathname.split("/").filter(Boolean);
   const id = parts[parts.length - 1];
-  console.log("TABLE ID:", id); // ✔ burada log alacağız
+  console.log("TABLE ID:", id);
   return id;
 };
 
-const tableId = getTableIdFromUrl();
-const API = `${import.meta.env.VITE_API_URL}/api`;
+/**
+ * ENV bazen Railway'de okunmadığı için fallback koyduk
+ */
+const API_BASE =
+  import.meta.env.VITE_API_URL || "https://tabletech-1-production.up.railway.app";
+
+const API = `${API_BASE}/api`;
 
 const QRMenu = () => {
+  const [tableId, setTableId] = useState(null);
   const [restaurant, setRestaurant] = useState(null);
   const [table, setTable] = useState(null);
   const [categories, setCategories] = useState([]);
@@ -36,20 +48,41 @@ const QRMenu = () => {
   const [rating, setRating] = useState(5);
   const [reviewComment, setReviewComment] = useState('');
 
+  /**
+   * Sayfa açılınca tableId'yi al
+   */
   useEffect(() => {
+    const id = getTableIdFromUrl();
+
+    if (!id) {
+      toast.error("Masa ID bulunamadı");
+      return;
+    }
+
+    setTableId(id);
+  }, []);
+
+  /**
+   * tableId geldikten sonra API çağır
+   */
+  useEffect(() => {
+    if (!tableId) return;
     fetchMenu();
   }, [tableId]);
 
   const fetchMenu = async () => {
     try {
+      console.log("API CALL:", `${API}/public/menu/${tableId}`);
+
       const response = await axios.get(`${API}/public/menu/${tableId}`);
+
       setRestaurant(response.data.restaurant);
       setTable(response.data.table);
       setCategories(response.data.categories);
       setItems(response.data.items);
     } catch (error) {
       toast.error('Menü yüklenemedi');
-      console.error(error);
+      console.error("MENÜ ERROR:", error);
     } finally {
       setLoading(false);
     }
