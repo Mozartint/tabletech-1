@@ -120,20 +120,21 @@ const AdminDashboard = () => {
     try {
       const token = localStorage.getItem('token');
       
-      const payload = {
-        name: formData.name,
-        address: formData.address,
-        phone: formData.phone,
-        owner_email: formData.owner_email,
-        owner_password: formData.owner_password,
-        owner_full_name: formData.owner_full_name,
-        kasa_email: formData.kasa_enabled ? formData.kasa_email : null,
-        kasa_password: formData.kasa_enabled ? formData.kasa_password : null,
-        mutfak_email: formData.mutfak_enabled ? formData.mutfak_email : null,
-        mutfak_password: formData.mutfak_enabled ? formData.mutfak_password : null,
-        kasa_enabled: formData.kasa_enabled,
-        mutfak_enabled: formData.mutfak_enabled
-      };
+    const payload = {
+  name: formData.name,
+  address: formData.address,
+  phone: formData.phone,
+  owner_email: formData.owner_email,
+  owner_password: formData.owner_password,
+  owner_full_name: formData.owner_full_name,
+  // null kullan, undefined kullanma
+  kasa_email: formData.kasa_enabled && formData.kasa_email ? formData.kasa_email : null,
+  kasa_password: formData.kasa_enabled && formData.kasa_password ? formData.kasa_password : null,
+  mutfak_email: formData.mutfak_enabled && formData.mutfak_email ? formData.mutfak_email : null,
+  mutfak_password: formData.mutfak_enabled && formData.mutfak_password ? formData.mutfak_password : null,
+  kasa_enabled: formData.kasa_enabled,
+  mutfak_enabled: formData.mutfak_enabled
+};
 
       console.log('Gönderilen payload:', payload); // Debug için
 
