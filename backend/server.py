@@ -279,30 +279,20 @@ async def login(credentials: UserLogin):
     access_token = create_access_token(data={"sub": user.id})
     return Token(access_token=access_token, token_type="bearer", user=user)
 
-@api_router.get("/admin/restaurants", response_model=List[Restaurant])
-async def get_restaurants(current_user: User = Depends(get_current_user)):
-    if current_user.role != "admin":
-        raise HTTPException(status_code=403, detail="Admin only")
-    
-    restaurants = await db.restaurants.find({}, {"_id": 0}).to_list(1000)
-    for r in restaurants:
-        if isinstance(r.get('created_at'), str):
-            r['created_at'] = datetime.fromisoformat(r['created_at'])
-        if isinstance(r.get('subscription_end_date'), str):
-            r['subscription_end_date'] = datetime.fromisoformat(r['subscription_end_date'])
-    return restaurants
-
 @api_router.post("/admin/restaurants", response_model=Restaurant)
 async def create_restaurant(data: RestaurantCreate, current_user: User = Depends(get_current_user)):
     if current_user.role != "admin":
         raise HTTPException(status_code=403, detail="Admin only")
-    
+
+    # -------------------------
+    # OWNER OLUŞTUR
+    # -------------------------
     owner = User(
         email=data.owner_email,
         full_name=data.owner_full_name,
         role="owner"
     )
-    
+
     restaurant = Restaurant(
         name=data.name,
         address=data.address,
@@ -310,19 +300,58 @@ async def create_restaurant(data: RestaurantCreate, current_user: User = Depends
         owner_id=owner.id,
         subscription_end_date=datetime.now(timezone.utc) + timedelta(days=30)
     )
-    
+
     owner.restaurant_id = restaurant.id
-    
+
     owner_doc = owner.model_dump()
-    owner_doc['created_at'] = owner_doc['created_at'].isoformat()
-    owner_doc['password'] = hash_password(data.owner_password)
+    owner_doc["created_at"] = owner_doc["created_at"].isoformat()
+    owner_doc["password"] = hash_password(data.owner_password)
+
     await db.users.insert_one(owner_doc)
-    
+
+    # -------------------------
+    # RESTORANI KAYDET
+    # -------------------------
     restaurant_doc = restaurant.model_dump()
-    restaurant_doc['created_at'] = restaurant_doc['created_at'].isoformat()
-    restaurant_doc['subscription_end_date'] = restaurant_doc['subscription_end_date'].isoformat()
+    restaurant_doc["created_at"] = restaurant_doc["created_at"].isoformat()
+    restaurant_doc["subscription_end_date"] = restaurant_doc["subscription_end_date"].isoformat()
+
     await db.restaurants.insert_one(restaurant_doc)
-    
+
+    # -------------------------
+    # KASA HESABI OLUŞTUR (İSTENİRSE)
+    # -------------------------
+    if data.kasa_enabled:
+        cashier_user = User(
+            email=f"kasa@{restaurant.id}.local",
+            full_name=f"{restaurant.name} Kasası",
+            role="cashier",
+            restaurant_id=restaurant.id
+        )
+
+        cashier_doc = cashier_user.model_dump()
+        cashier_doc["created_at"] = cashier_doc["created_at"].isoformat()
+        cashier_doc["password"] = hash_password("123456")  # ilk şifre
+
+        await db.users.insert_one(cashier_doc)
+
+    # -------------------------
+    # MUTFAK HESABI OLUŞTUR (İSTENİRSE)
+    # -------------------------
+    if data.mutfak_enabled:
+        kitchen_user = User(
+            email=f"mutfak@{restaurant.id}.local",
+            full_name=f"{restaurant.name} Mutfağı",
+            role="kitchen",
+            restaurant_id=restaurant.id
+        )
+
+        kitchen_doc = kitchen_user.model_dump()
+        kitchen_doc["created_at"] = kitchen_doc["created_at"].isoformat()
+        kitchen_doc["password"] = hash_password("123456")
+
+        await db.users.insert_one(kitchen_doc)
+
     return restaurant
 
 @api_router.delete("/admin/restaurants/{restaurant_id}")
