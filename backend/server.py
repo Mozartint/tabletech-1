@@ -17,12 +17,6 @@ from jose import JWTError, jwt
 import qrcode
 import io
 import base64
-
-    if current_user["role"] != "admin":
-        raise HTTPException(status_code=403, detail="Admin only")
-
-    restaurants = list(db.restaurants.find({}, {"_id": 0}))
-    return restaurants
     
 @app.on_event("startup")
 async def startup_db_check():
