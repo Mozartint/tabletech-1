@@ -34,6 +34,11 @@ if not MONGO_URL:
 client = AsyncIOMotorClient(MONGO_URL)
 db = client[DB_NAME]
 
+@app.get("/debug-users")
+async def debug_users():
+    users = await db.users.find().to_list(100)
+    return {"count": len(users), "users": users}
+    
 @app.get("/debug-env")
 async def debug_env():
     return {
