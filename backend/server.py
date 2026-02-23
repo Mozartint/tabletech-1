@@ -18,9 +18,13 @@ import qrcode
 import io
 import base64
 
+# 🔴 ÖNCE app oluşturulur
+app = FastAPI()
+
 ROOT_DIR = Path(__file__).parent
 load_dotenv(ROOT_DIR / '.env')
 
+# 🔴 ENV'den Mongo al
 MONGO_URL = os.environ.get("MONGO_URL")
 DB_NAME = os.environ.get("DB_NAME", "railway")
 
@@ -30,6 +34,7 @@ if not MONGO_URL:
 client = AsyncIOMotorClient(MONGO_URL)
 db = client[DB_NAME]
 
+# 🔴 Startup'ta DB kontrolü yapılır
 @app.on_event("startup")
 async def startup_db_check():
     try:
@@ -37,8 +42,6 @@ async def startup_db_check():
         print("✅ MongoDB Connected")
     except Exception as e:
         print("❌ MongoDB Connection Error:", e)
-        
-app = FastAPI()
 # React build klasörünü yayınla (frontend)
 FRONTEND_BUILD_PATH = ROOT_DIR / "frontend" / "build"
 
