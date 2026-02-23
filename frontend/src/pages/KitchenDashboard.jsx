@@ -15,24 +15,11 @@ const KitchenDashboard = () => {
   const [lastOrderCount, setLastOrderCount] = useState(0);
   const [newOrderAlert, setNewOrderAlert] = useState(null);
 
-  const playNotificationSound = () => {
-    const audioContext = new (window.AudioContext || window.webkitAudioContext)();
-    const oscillator = audioContext.createOscillator();
-    const gainNode = audioContext.createGain();
-    
-    oscillator.connect(gainNode);
-    gainNode.connect(audioContext.destination);
-    
-    oscillator.frequency.setValueAtTime(800, audioContext.currentTime);
-    oscillator.frequency.setValueAtTime(1000, audioContext.currentTime + 0.1);
-    oscillator.frequency.setValueAtTime(800, audioContext.currentTime + 0.2);
-    
-    gainNode.gain.setValueAtTime(0.3, audioContext.currentTime);
-    gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.5);
-    
-    oscillator.start(audioContext.currentTime);
-    oscillator.stop(audioContext.currentTime + 0.5);
-  };
+const playNotificationSound = () => {
+  const audio = new Audio('https://cdn.shopify.com/s/files/1/0993/7708/6740/files/piece-of-cake-611.mp3');
+  audio.volume = 0.7;
+  audio.play().catch(() => {});
+};
 
   useEffect(() => {
     const token = localStorage.getItem('token');
