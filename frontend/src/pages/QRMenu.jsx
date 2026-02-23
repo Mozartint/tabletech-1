@@ -1,5 +1,4 @@
 import React, { useState, useEffect } from 'react';
-import { useParams } from 'react-router-dom';
 import axios from 'axios';
 import { Button } from '../components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card';
@@ -10,11 +9,16 @@ import { Textarea } from '../components/ui/textarea';
 import { toast } from 'sonner';
 import { ShoppingCart, Plus, Minus, UtensilsCrossed, X, Clock, Star, Bell } from 'lucide-react';
 import { Badge } from '../components/ui/badge';
+const getTableIdFromUrl = () => {
+  const path = window.location.pathname;
+  const parts = path.split("/");
+  return parts[parts.length - 1];
+};
 
+const tableId = getTableIdFromUrl();
 const API = `${import.meta.env.VITE_API_URL}/api`;
 
 const QRMenu = () => {
-  const { tableId } = useParams();
   const [restaurant, setRestaurant] = useState(null);
   const [table, setTable] = useState(null);
   const [categories, setCategories] = useState([]);
