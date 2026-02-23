@@ -353,7 +353,21 @@ async def create_restaurant(data: RestaurantCreate, current_user: User = Depends
         await db.users.insert_one(kitchen_doc)
 
     return restaurant
+    
+@api_router.get("/admin/users")
+async def list_users(current_user: User = Depends(get_current_user)):
+    if current_user.role != "admin":
+        raise HTTPException(status_code=403, detail="Admin only")
 
+    users = []
+    cursor = db.users.find({})
+
+    async for user in cursor:
+        user["_id"] = str(user["_id"])  # Mongo ObjectId fix
+        users.append(user)
+
+    return users
+    
 @api_router.delete("/admin/restaurants/{restaurant_id}")
 async def delete_restaurant(restaurant_id: str, current_user: User = Depends(get_current_user)):
     if current_user.role != "admin":
