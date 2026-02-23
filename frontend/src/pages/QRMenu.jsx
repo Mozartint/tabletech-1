@@ -11,7 +11,7 @@ import { toast } from 'sonner';
 import { ShoppingCart, Plus, Minus, UtensilsCrossed, X, Clock, Star, Bell } from 'lucide-react';
 import { Badge } from '../components/ui/badge';
 
-const API = `${process.env.REACT_APP_BACKEND_URL}/api`;
+const API = `${import.meta.env.VITE_API_URL}/api`;
 
 const QRMenu = () => {
   const { tableId } = useParams();
