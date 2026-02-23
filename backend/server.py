@@ -7,6 +7,7 @@ from starlette.middleware.cors import CORSMiddleware
 from motor.motor_asyncio import AsyncIOMotorClient
 import os
 import logging
+import traceback
 from pathlib import Path
 from pydantic import BaseModel, Field, ConfigDict, EmailStr
 from typing import List, Optional
@@ -57,7 +58,7 @@ async def startup_db_check():
 # -------------------------
 @app.get("/debug-users")
 async def debug_users():
-    try:  # ← try bloğu en başta olmalı
+    try:
         users_cursor = db.users.find()
         users = []
 
@@ -71,7 +72,7 @@ async def debug_users():
             "count": len(users),
             "users": users
         }
-    except Exception as e:  # ← except try ile aynı seviyede olmalı
+    except Exception as e:
         return {
             "status": "error",
             "message": str(e)
@@ -332,64 +333,94 @@ async def login(credentials: UserLogin):
     return Token(access_token=access_token, token_type="bearer", user=user)
 
 @api_router.post("/admin/restaurants")
-async def create_restaurant(data: RestaurantCreate, current_user: dict = Depends(get_current_user)):
-    if current_user["role"] != "admin":
-        raise HTTPException(status_code=403, detail="Yetkisiz")
+async def create_restaurant(data: RestaurantCreate, current_user: User = Depends(get_current_user)):
+    """
+    Yeni restoran oluşturur. Opsiyonel olarak kasa ve mutfak kullanıcıları da oluşturur.
+    """
+    try:
+        # Loglama
+        print(f"[CREATE RESTAURANT] İstek geldi - User: {current_user.email}, Role: {current_user.role}")
+        print(f"[CREATE RESTAURANT] Gelen data: {data.model_dump()}")
+        
+        # Yetki kontrolü - User modeli artık dict gibi erişilebilir (model_config = ConfigDict(extra="ignore"))
+        if current_user.role != "admin":
+            print(f"[CREATE RESTAURANT] Yetkisiz erişim: {current_user.role}")
+            raise HTTPException(status_code=403, detail="Yetkisiz - Sadece admin yapabilir")
 
-    restaurant_id = str(uuid.uuid4())
+        restaurant_id = str(uuid.uuid4())
+        print(f"[CREATE RESTAURANT] Yeni restoran ID: {restaurant_id}")
 
-    # OWNER oluştur
-    owner_user = {
-        "id": str(uuid.uuid4()),
-        "email": data.owner_email,
-        "full_name": data.owner_full_name,
-        "password": pwd_context.hash(data.owner_password),
-        "role": "owner",
-        "restaurant_id": restaurant_id,
-        "created_at": datetime.now(timezone.utc)
-    }
-    await db.users.insert_one(owner_user)
-
-    # KASA oluştur (opsiyonel)
-    if data.kasa_email and data.kasa_password:
-        kasa_user = {
+        # OWNER oluştur
+        owner_user = {
             "id": str(uuid.uuid4()),
-            "email": data.kasa_email,
-            "full_name": "Kasa",
-            "password": pwd_context.hash(data.kasa_password),
-            "role": "cashier",
+            "email": data.owner_email,
+            "full_name": data.owner_full_name,
+            "password": pwd_context.hash(data.owner_password),
+            "role": "owner",
             "restaurant_id": restaurant_id,
             "created_at": datetime.now(timezone.utc)
         }
-        await db.users.insert_one(kasa_user)
+        await db.users.insert_one(owner_user)
+        print(f"[CREATE RESTAURANT] Owner oluşturuldu: {owner_user['email']}")
 
-    # MUTFAK oluştur (opsiyonel)
-    if data.mutfak_email and data.mutfak_password:
-        mutfak_user = {
-            "id": str(uuid.uuid4()),
-            "email": data.mutfak_email,
-            "full_name": "Mutfak",
-            "password": pwd_context.hash(data.mutfak_password),
-            "role": "kitchen",
-            "restaurant_id": restaurant_id,
-            "created_at": datetime.now(timezone.utc)
+        # KASA oluştur (opsiyonel)
+        if data.kasa_email and data.kasa_password:
+            kasa_user = {
+                "id": str(uuid.uuid4()),
+                "email": data.kasa_email,
+                "full_name": "Kasa",
+                "password": pwd_context.hash(data.kasa_password),
+                "role": "cashier",
+                "restaurant_id": restaurant_id,
+                "created_at": datetime.now(timezone.utc)
+            }
+            await db.users.insert_one(kasa_user)
+            print(f"[CREATE RESTAURANT] Kasa oluşturuldu: {kasa_user['email']}")
+
+        # MUTFAK oluştur (opsiyonel)
+        if data.mutfak_email and data.mutfak_password:
+            mutfak_user = {
+                "id": str(uuid.uuid4()),
+                "email": data.mutfak_email,
+                "full_name": "Mutfak",
+                "password": pwd_context.hash(data.mutfak_password),
+                "role": "kitchen",
+                "restaurant_id": restaurant_id,
+                "created_at": datetime.now(timezone.utc)
+            }
+            await db.users.insert_one(mutfak_user)
+            print(f"[CREATE RESTAURANT] Mutfak oluşturuldu: {mutfak_user['email']}")
+
+        # Restoran oluştur
+        restaurant = {
+            "id": restaurant_id,
+            "name": data.name,
+            "address": data.address,
+            "phone": data.phone,
+            "owner_id": owner_user["id"],
+            "subscription_status": "active",
+            "subscription_end_date": datetime.now(timezone.utc) + timedelta(days=30),
+            "created_at": datetime.now(timezone.utc),
+            "kasa_enabled": data.kasa_enabled,
+            "mutfak_enabled": data.mutfak_enabled
         }
-        await db.users.insert_one(mutfak_user)
 
-    restaurant = {
-        "id": restaurant_id,
-        "name": data.name,
-        "address": data.address,
-        "phone": data.phone,
-        "owner_id": owner_user["id"],
-        "subscription_status": "active",
-        "subscription_end_date": datetime.now(timezone.utc) + timedelta(days=30),
-        "created_at": datetime.now(timezone.utc)
-    }
+        await db.restaurants.insert_one(restaurant)
+        print(f"[CREATE RESTAURANT] Restoran oluşturuldu: {restaurant['name']}")
 
-    await db.restaurants.insert_one(restaurant)
-
-    return restaurant
+        return restaurant
+        
+    except HTTPException as he:
+        # HTTP exception'ları olduğu gibi fırlat
+        print(f"[CREATE RESTAURANT] HTTP Hatası: {he.detail}")
+        raise he
+    except Exception as e:
+        # Diğer tüm hataları yakala ve logla
+        error_msg = f"Sunucu hatası: {str(e)}"
+        print(f"[CREATE RESTAURANT] KRİTİK HATA: {error_msg}")
+        print(f"[CREATE RESTAURANT] Traceback:")
+        traceback.print_exc()
+        raise HTTPException(status_code=500, detail=error_msg)
 
 @api_router.get("/admin/users")
 async def list_users(current_user: User = Depends(get_current_user)):
@@ -400,7 +431,7 @@ async def list_users(current_user: User = Depends(get_current_user)):
     cursor = db.users.find({})
 
     async for user in cursor:
-        user["_id"] = str(user["_id"])  # Mongo ObjectId fix
+        user["_id"] = str(user["_id"])
         users.append(user)
 
     return users
