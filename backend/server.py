@@ -34,6 +34,12 @@ if not MONGO_URL:
 client = AsyncIOMotorClient(MONGO_URL)
 db = client[DB_NAME]
 
+@app.get("/debug-env")
+async def debug_env():
+    return {
+        "MONGO_URL": os.environ.get("MONGO_URL"),
+        "DB_NAME": os.environ.get("DB_NAME")
+    }
 # 🔴 Startup'ta DB kontrolü yapılır
 @app.on_event("startup")
 async def startup_db_check():
