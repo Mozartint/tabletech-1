@@ -26,6 +26,15 @@ client = AsyncIOMotorClient(mongo_url)
 db = client[os.environ.get('DB_NAME', 'railway')]
 
 app = FastAPI()
+# React build klasörünü yayınla (frontend)
+FRONTEND_BUILD_PATH = ROOT_DIR / "frontend" / "build"
+
+if FRONTEND_BUILD_PATH.exists():
+    app.mount(
+        "/",
+        StaticFiles(directory=FRONTEND_BUILD_PATH, html=True),
+        name="frontend",
+    )
 api_router = APIRouter(prefix="/api")
 
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
@@ -887,24 +896,71 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# EN SON static files ve catch-all route ekle
-# Static files - React build klasörü
-app.mount("/", StaticFiles(directory="frontend/build", html=True), name="static")
+# -----------------------------
+# API ROUTER'I EKLE (ÇOK ÖNEMLİ)
+# -----------------------------
+app.include_router(api_router)
 
-# React Router için catch-all route (API dışındaki tüm route'lar için)
+
+# -----------------------------
+# REACT BUILD PATH
+# -----------------------------
+frontend_path = Path("frontend/build")
+
+
+# -----------------------------
+# STATIC DOSYALAR (JS, CSS vs.)
+# React'in static klasörünü serve ediyoruz
+# -----------------------------
+if (frontend_path / "static").exists():
+    app.mount(
+        "/static",
+        StaticFiles(directory=frontend_path / "static"),
+        name="static",
+    )
+
+
+# -----------------------------
+# REACT INDEX SERVE (ANA SAYFA)
+# -----------------------------
+@app.get("/")
+async def serve_root():
+    index_file = frontend_path / "index.html"
+    if index_file.exists():
+        return FileResponse(index_file)
+    raise HTTPException(status_code=404, detail="React build bulunamadı")
+
+
+# -----------------------------
+# REACT ROUTER DESTEK (CATCH-ALL)
+# /api HARİÇ TÜM ROUTE'LARI REACT'E VER
+# -----------------------------
 @app.get("/{full_path:path}")
 async def serve_react_app(full_path: str):
-    # API route'larını hariç tut
+    # API endpointlerine dokunma!
     if full_path.startswith("api/"):
-        raise HTTPException(status_code=404, detail="Not Found")
-    return FileResponse("frontend/build/index.html")
+        raise HTTPException(status_code=404, detail="API route")
 
+    index_file = frontend_path / "index.html"
+    if index_file.exists():
+        return FileResponse(index_file)
+
+    raise HTTPException(status_code=404, detail="Sayfa bulunamadı")
+
+
+# -----------------------------
+# LOGGING
+# -----------------------------
 logging.basicConfig(
     level=logging.INFO,
-    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+    format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"
 )
 logger = logging.getLogger(__name__)
 
+
+# -----------------------------
+# SHUTDOWN EVENT
+# -----------------------------
 @app.on_event("shutdown")
 async def shutdown_db_client():
     client.close()
