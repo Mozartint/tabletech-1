@@ -12,8 +12,9 @@ import { Badge } from '../components/ui/badge';
 const getTableIdFromUrl = () => {
   const path = window.location.pathname;
   const parts = path.split("/");
-  return parts[parts.length - 1];
-  console.log("TABLE ID:", tableId);
+  const id = parts[parts.length - 1];
+  console.log("TABLE ID:", id); // ✔ burada log alacağız
+  return id;
 };
 
 const tableId = getTableIdFromUrl();
