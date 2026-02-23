@@ -9,22 +9,22 @@ import QRMenu from "./pages/QRMenu";
 
 function App() {
   return (
-    <BrowserRouter>
-      <Routes>
+  <BrowserRouter>
+    <Routes>
 
-        {/* QR MENU - EN KRİTİK ROUTE */}
-        <Route path="/menu/:tableId" element={<QRMenu />} />
+      {/* QR'dan gelen müşteri menüsü */}
+      <Route path="/menu/:tableId" element={<QRMenu />} />
 
-        {/* Diğer sayfalar */}
-        <Route path="/" element={<Login />} />
-        <Route path="/admin" element={<AdminDashboard />} />
-        <Route path="/cashier" element={<CashierDashboard />} />
-        <Route path="/kitchen" element={<KitchenDashboard />} />
-        <Route path="/owner" element={<OwnerDashboard />} />
+      {/* Yönetim panelleri */}
+      <Route path="/" element={<Login />} />
+      <Route path="/admin" element={<AdminDashboard />} />
+      <Route path="/cashier" element={<CashierDashboard />} />
+      <Route path="/kitchen" element={<KitchenDashboard />} />
+      <Route path="/owner" element={<OwnerDashboard />} />
 
-      </Routes>
-    </BrowserRouter>
-  );
+    </Routes>
+  </BrowserRouter>
+);
 }
 
 export default App;
