@@ -13,6 +13,7 @@ const getTableIdFromUrl = () => {
   const path = window.location.pathname;
   const parts = path.split("/");
   return parts[parts.length - 1];
+  console.log("TABLE ID:", tableId);
 };
 
 const tableId = getTableIdFromUrl();
