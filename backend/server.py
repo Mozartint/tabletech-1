@@ -1003,7 +1003,6 @@ async def resolve_waiter_call(call_id: str, current_user: User = Depends(get_cur
     return {"message": "Waiter call resolved"}
 
 # ÖNCE API router'ı ekle
-app.include_router(api_router)
 
 # SONRA middleware ekle
 app.add_middleware(
