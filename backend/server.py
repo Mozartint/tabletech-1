@@ -36,8 +36,27 @@ db = client[DB_NAME]
 
 @app.get("/debug-users")
 async def debug_users():
-    users = await db.users.find().to_list(100)
-    return {"count": len(users), "users": users}
+    try:
+        users_cursor = db.users.find()
+        users = []
+
+        async for user in users_cursor:
+            # Mongo ObjectId sorununu temizle
+            if "_id" in user:
+                user["_id"] = str(user["_id"])
+            users.append(user)
+
+        return {
+            "status": "ok",
+            "count": len(users),
+            "users": users
+        }
+
+    except Exception as e:
+        return {
+            "status": "error",
+            "message": str(e)
+        }
     
 @app.get("/debug-env")
 async def debug_env():
