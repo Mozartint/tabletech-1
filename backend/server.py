@@ -76,6 +76,11 @@ class Restaurant(BaseModel):
     address: str
     phone: str
     owner_id: str
+
+    # ✅ YENİ — özellik yetkileri
+    kasa_enabled: bool = False
+    mutfak_enabled: bool = False
+
     subscription_status: str = "active"
     subscription_end_date: datetime
     created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
@@ -87,6 +92,10 @@ class RestaurantCreate(BaseModel):
     owner_email: EmailStr
     owner_password: str
     owner_full_name: str
+
+    # ✅ Admin restoran açarken seçebilecek
+    kasa_enabled: bool = False
+    mutfak_enabled: bool = False
 
 class Table(BaseModel):
     model_config = ConfigDict(extra="ignore")
